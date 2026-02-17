@@ -589,9 +589,38 @@ function App() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [goToView])
 
-  // Shake-to-animate on mobile (replaces auto-play).
-  // iOS permission is requested in Model.jsx handleClick (tap 0) — a real user gesture.
-  // This effect just listens for devicemotion once permission is available.
+  // Mobile: native DOM click handler for iOS audio unlock + DeviceMotion permission.
+  // R3F's synthetic onClick doesn't count as a user gesture on iOS — this does.
+  useEffect(() => {
+    if (!isMobile()) return
+
+    const container = document.getElementById('canvas-container')
+    if (!container) return
+
+    let motionPermissionGranted = false
+
+    const handleNativeClick = () => {
+      // Audio unlock: create + resume AudioContext in a real user gesture
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)()
+        if (ctx.state === 'suspended') ctx.resume()
+      } catch (_) {}
+
+      // DeviceMotion permission (iOS 13+)
+      if (!motionPermissionGranted &&
+          typeof DeviceMotionEvent !== 'undefined' &&
+          typeof DeviceMotionEvent.requestPermission === 'function') {
+        DeviceMotionEvent.requestPermission()
+          .then((state) => { if (state === 'granted') motionPermissionGranted = true })
+          .catch(() => {})
+      }
+    }
+
+    container.addEventListener('click', handleNativeClick)
+    return () => container.removeEventListener('click', handleNativeClick)
+  }, [])
+
+  // Shake-to-animate on mobile (bonus — first tap also triggers animation).
   useEffect(() => {
     if (!isMobile()) return
 
@@ -607,8 +636,6 @@ function App() {
       }
     }
 
-    // On iOS, the listener won't fire until permission is granted (handled in handleClick).
-    // On Android, it works immediately.
     window.addEventListener('devicemotion', handleMotion)
     return () => window.removeEventListener('devicemotion', handleMotion)
   }, [])

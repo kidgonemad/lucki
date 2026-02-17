@@ -441,28 +441,17 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       e.stopPropagation()
       const tap = mobileTapRef.current
       if (tap === 0) {
-        // Tap 1 → zoom to TV.
-        // This is a real click gesture — iOS Safari trusts it for:
-        // 1) Audio unlock (unmute video)
-        // 2) DeviceMotion permission (shake-to-animate)
+        // Tap 1 → zoom to TV + play slide-in animation.
+        // Audio unlock happens via native DOM click handler (see App.jsx).
         if (videoRef.current) {
           videoRef.current.muted = false
           videoRef.current.volume = 1.0
-          // Re-trigger play within this gesture so iOS binds unmuted state
-          if (videoRef.current.src && !videoRef.current.paused) {
-            videoRef.current.play().catch(() => {})
-          }
-        }
-        // Create AudioContext in this gesture to unlock web audio
-        try {
-          const ctx = new (window.AudioContext || window.webkitAudioContext)()
-          if (ctx.state === 'suspended') ctx.resume()
-        } catch (_) {}
-        // Request DeviceMotion permission (iOS 13+) in this gesture
-        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-          DeviceMotionEvent.requestPermission().catch(() => {})
         }
         useChannelStore.setState({ isMuted: false, volume: 1.0 })
+        // Play the slide-in animation on first tap — reliable, no shake needed
+        if (!useChannelStore.getState().animationPlaying) {
+          useChannelStore.getState().toggleAnimation()
+        }
         onGoTo('tv')
         mobileTapRef.current = 1
       } else if (tap === 1) {
