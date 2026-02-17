@@ -636,15 +636,16 @@ function App() {
                   requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                       if (mobile) {
-                        // Mobile: wait for GIF to play 3x (~4.5s), then
-                        // start animation behind overlay, fade overlay out
+                        // Mobile: GIF plays 3x (~4.5s), then fade overlay,
+                        // then play animation in full view
                         setTimeout(() => {
-                          // Start slide-in animation while overlay still visible
-                          useChannelStore.getState().toggleAnimation()
-                          // Begin fade-out after animation has started moving
-                          setTimeout(() => setOverlayFading(true), 200)
-                          // Remove overlay from DOM after fade completes
-                          setTimeout(() => setLoaded(true), 900)
+                          // Fade out overlay
+                          setOverlayFading(true)
+                          // After fade finishes (0.6s), remove overlay + play animation
+                          setTimeout(() => {
+                            setLoaded(true)
+                            useChannelStore.getState().toggleAnimation()
+                          }, 700)
                         }, 4500)
                       } else {
                         setLoaded(true)

@@ -104,7 +104,7 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
     if (animationPlaying) {
       action.setLoop(LoopOnce)
       action.clampWhenFinished = true
-      action.timeScale = 1.5
+      action.timeScale = 1.0
       action.reset().play()
     } else {
       action.stop()
