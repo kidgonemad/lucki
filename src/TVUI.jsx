@@ -3,7 +3,7 @@ import { RenderTexture, OrthographicCamera, Text } from '@react-three/drei'
 import { MeshBasicMaterial, LinearFilter } from 'three'
 import useChannelStore from './store'
 
-const FONT_URL = '/tv-ui-assets/fonts/retro-tv-font.otf'
+const FONT_URL = `${import.meta.env.BASE_URL}tv-ui-assets/fonts/retro-tv-font.otf`
 const UI_COLOR = '#FFFFFF'
 
 const textMaterial = new MeshBasicMaterial({ color: UI_COLOR, toneMapped: false })

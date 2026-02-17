@@ -456,7 +456,7 @@ function CameraPanel({ controlsRef, onGoTo }) {
 }
 
 // Click sound for channel/volume actions
-const clickSound = typeof Audio !== 'undefined' ? new Audio('/tv-ui-assets/sounds/remote-click.mp3') : null
+const clickSound = typeof Audio !== 'undefined' ? new Audio(`${import.meta.env.BASE_URL}tv-ui-assets/sounds/remote-click.mp3`) : null
 function playClick() {
   if (!clickSound) return
   clickSound.currentTime = 0
@@ -682,7 +682,7 @@ function App() {
 
       {!loaded && (
         <div className="loading-overlay">
-          <img src="/assets/logo.gif" alt="Loading" className="loading-logo" />
+          <img src={`${import.meta.env.BASE_URL}assets/logo.gif`} alt="Loading" className="loading-logo" />
         </div>
       )}
     </div>

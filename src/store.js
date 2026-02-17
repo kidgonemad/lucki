@@ -10,9 +10,9 @@ const useChannelStore = create((set, get) => ({
   // Channel state
   currentChannel: 1,
   channels: {
-    1: '/videos/ch1.mp4',
-    2: '/videos/ch2.mp4',
-    3: '/videos/ch3.mp4',
+    1: `${import.meta.env.BASE_URL}videos/ch1.mp4`,
+    2: `${import.meta.env.BASE_URL}videos/ch2.mp4`,
+    3: `${import.meta.env.BASE_URL}videos/ch3.mp4`,
   },
   noSignal: false,
   buffering: false,
