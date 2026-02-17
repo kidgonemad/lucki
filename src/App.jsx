@@ -594,11 +594,6 @@ function App() {
   useEffect(() => {
     if (!isMobile()) return
 
-    const container = document.getElementById('canvas-container')
-    if (!container) return
-
-    let motionPermissionGranted = false
-
     const handleNativeClick = () => {
       // Audio unlock: create + resume AudioContext in a real user gesture
       try {
@@ -606,18 +601,25 @@ function App() {
         if (ctx.state === 'suspended') ctx.resume()
       } catch (_) {}
 
-      // DeviceMotion permission (iOS 13+)
-      if (!motionPermissionGranted &&
-          typeof DeviceMotionEvent !== 'undefined' &&
+      // DeviceMotion permission (iOS 13+) — fires on any tap anywhere
+      if (typeof DeviceMotionEvent !== 'undefined' &&
           typeof DeviceMotionEvent.requestPermission === 'function') {
         DeviceMotionEvent.requestPermission()
-          .then((state) => { if (state === 'granted') motionPermissionGranted = true })
+          .then((state) => {
+            if (state === 'granted') {
+              // Permission granted, stop asking
+              document.removeEventListener('click', handleNativeClick)
+            }
+          })
           .catch(() => {})
+      } else {
+        // Non-iOS — no permission needed, remove listener
+        document.removeEventListener('click', handleNativeClick)
       }
     }
 
-    container.addEventListener('click', handleNativeClick)
-    return () => container.removeEventListener('click', handleNativeClick)
+    document.addEventListener('click', handleNativeClick)
+    return () => document.removeEventListener('click', handleNativeClick)
   }, [])
 
   // Shake-to-animate on mobile (bonus — first tap also triggers animation).

@@ -441,17 +441,12 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       e.stopPropagation()
       const tap = mobileTapRef.current
       if (tap === 0) {
-        // Tap 1 → zoom to TV + play slide-in animation.
-        // Audio unlock happens via native DOM click handler (see App.jsx).
+        // Tap 1 → zoom to TV. Audio unlock via native DOM click (App.jsx).
         if (videoRef.current) {
           videoRef.current.muted = false
           videoRef.current.volume = 1.0
         }
         useChannelStore.setState({ isMuted: false, volume: 1.0 })
-        // Play the slide-in animation on first tap — reliable, no shake needed
-        if (!useChannelStore.getState().animationPlaying) {
-          useChannelStore.getState().toggleAnimation()
-        }
         onGoTo('tv')
         mobileTapRef.current = 1
       } else if (tap === 1) {
