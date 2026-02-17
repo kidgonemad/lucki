@@ -444,6 +444,7 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       e.stopPropagation()
       const tap = mobileTapRef.current
       if (tap === 0) {
+        // Tap 1 → turn on TV + unmute + zoom in (Safari audio permission triggers here)
         if (videoRef.current) {
           videoRef.current.muted = false
           videoRef.current.volume = 1.0

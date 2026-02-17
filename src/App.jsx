@@ -455,40 +455,6 @@ function CameraPanel({ controlsRef, onGoTo }) {
   )
 }
 
-// --- Mobile tilt POV (gyroscope parallax) ---
-const tiltRef = { beta: 0, gamma: 0 }
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('deviceorientation', (e) => {
-    if (e.beta !== null) tiltRef.beta = e.beta
-    if (e.gamma !== null) tiltRef.gamma = e.gamma
-  })
-}
-
-function MobileTiltPOV({ controlsRef, baseTargetRef }) {
-  useFrame(() => {
-    const ctrl = controlsRef.current
-    const base = baseTargetRef.current
-    if (!ctrl || !base) return
-
-    // Normalize: beta ~55 is neutral (phone held in hand), gamma 0 is level
-    const normalBeta = (tiltRef.beta - 55) / 90   // -1 to 1
-    const normalGamma = tiltRef.gamma / 90          // -1 to 1
-
-    // Subtle shift — max ~2 units each direction
-    const offsetX = normalGamma * 2
-    const offsetY = -normalBeta * 1.5
-
-    ctrl.setTarget(
-      base.x + offsetX,
-      base.y + offsetY,
-      base.z,
-      false
-    )
-  })
-  return null
-}
-
 // Click sound for channel/volume actions
 const clickSound = typeof Audio !== 'undefined' ? new Audio(`${import.meta.env.BASE_URL}tv-ui-assets/sounds/remote-click.mp3`) : null
 function playClick() {
@@ -503,7 +469,6 @@ function App() {
   const [loaded, setLoaded] = useState(false)
   const [overlayFading, setOverlayFading] = useState(false)
   const mobileTapRef = useRef(0) // mobile tap sequence: 0=ready, 1=zoomed in, 2=tv on
-  const baseTargetRef = useRef(null) // base camera target for tilt offset
 
   // Go to a camera position (slot object, 'default', or 'tv')
   const goToView = useCallback((slotOrKey) => {
@@ -528,8 +493,6 @@ function App() {
       p = slotOrKey.position
       t = slotOrKey.target
     }
-    // Save base target for tilt offset
-    if (mobile) baseTargetRef.current = { x: t.x, y: t.y, z: t.z }
     // Quick cinematic transition
     const origSmooth = ctrl.smoothTime
     ctrl.smoothTime = mobile ? 0.4 : 0.7
@@ -627,34 +590,16 @@ function App() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [goToView])
 
-  // Mobile: native DOM click for iOS audio unlock + DeviceOrientation permission
+  // Mobile: native DOM click for iOS audio unlock (no DeviceMotion needed)
   useEffect(() => {
     if (!isMobile()) return
 
-    let permissionGranted = false
-
     const handleNativeClick = () => {
-      // Audio unlock
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)()
         if (ctx.state === 'suspended') ctx.resume()
       } catch (_) {}
-
-      // DeviceOrientation permission (iOS 13+) for tilt POV
-      if (!permissionGranted &&
-          typeof DeviceOrientationEvent !== 'undefined' &&
-          typeof DeviceOrientationEvent.requestPermission === 'function') {
-        DeviceOrientationEvent.requestPermission()
-          .then((state) => {
-            if (state === 'granted') {
-              permissionGranted = true
-              document.removeEventListener('click', handleNativeClick)
-            }
-          })
-          .catch(() => {})
-      } else {
-        document.removeEventListener('click', handleNativeClick)
-      }
+      document.removeEventListener('click', handleNativeClick)
     }
 
     document.addEventListener('click', handleNativeClick)
@@ -685,7 +630,6 @@ function App() {
                   const p = mobile ? MOBILE_DEFAULT.position : HARDCODED_DEFAULT.position
                   const t = mobile ? MOBILE_DEFAULT.target : HARDCODED_DEFAULT.target
                   ctrl.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, false)
-                  if (mobile) baseTargetRef.current = { x: t.x, y: t.y, z: t.z }
                 }
                 // GPU warmup behind overlay
                 requestAnimationFrame(() => {
@@ -728,7 +672,6 @@ function App() {
           />
 
           <WASDControls controlsRef={controlsRef} />
-          {isMobile() && <MobileTiltPOV controlsRef={controlsRef} baseTargetRef={baseTargetRef} />}
           <Stats className="fps-stats" />
         </SheetProvider>
       </Canvas>
