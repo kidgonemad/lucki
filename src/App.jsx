@@ -636,18 +636,21 @@ function App() {
                   requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                       if (mobile) {
-                        // Mobile: GIF plays 3x (~4.5s), then fade overlay,
-                        // then play animation in full view
+                        // Warmup: play animation invisibly behind the overlay
+                        // so GPU caches the entire animation path
+                        useChannelStore.setState({ animationPlaying: true })
+                        // After animation finishes (~2.5s), reset it
                         setTimeout(() => {
-                          // Fade out overlay
-                          setOverlayFading(true)
-                          // After fade finishes (0.6s), remove overlay
-                          setTimeout(() => setLoaded(true), 700)
-                          // Play animation 1s after overlay gone (scene settled)
-                          setTimeout(() => {
-                            useChannelStore.setState({ animationPlaying: true })
-                          }, 1700)
-                        }, 4500)
+                          useChannelStore.setState({ animationPlaying: false })
+                        }, 2500)
+                        // At 4.5s: fade overlay
+                        setTimeout(() => setOverlayFading(true), 4500)
+                        // At 5.2s: overlay gone
+                        setTimeout(() => setLoaded(true), 5200)
+                        // At 5.5s: play animation for real (GPU warm, smooth)
+                        setTimeout(() => {
+                          useChannelStore.setState({ animationPlaying: true })
+                        }, 5500)
                       } else {
                         setLoaded(true)
                       }
