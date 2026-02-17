@@ -104,7 +104,7 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
     if (animationPlaying) {
       action.setLoop(LoopOnce)
       action.clampWhenFinished = true
-      action.timeScale = 2.5
+      action.timeScale = 1.5
       action.reset().play()
     } else {
       action.stop()
@@ -140,16 +140,36 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
     document.body.appendChild(video)
     videoRef.current = video
 
-    // Silently unlock audio on first touch (iOS Safari requirement)
+    // Mobile audio unlock — iOS Safari requires user gesture to unmute.
+    // We create an AudioContext and resume it on first touch to unlock web audio,
+    // then keep video unmuted. Hardware volume buttons and silent switch handle the rest.
     const mobile = window.innerWidth / window.innerHeight < 1
+    let audioCtx = null
     let unlockHandler = null
     if (mobile) {
       unlockHandler = () => {
+        // Resume AudioContext to unlock web audio on iOS
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+        if (audioCtx.state === 'suspended') audioCtx.resume()
+        // Force unmute — this is within a user gesture so iOS will honour it
         video.muted = false
         video.volume = 1.0
+        // Re-trigger play so iOS associates the unmuted state with this gesture
+        if (video.src && !video.paused) video.play().catch(() => {})
         useChannelStore.setState({ isMuted: false, volume: 1.0 })
       }
-      document.addEventListener('touchstart', unlockHandler, { once: true })
+      // Use capture + not once: keep trying on every touch until audio is actually unlocked
+      document.addEventListener('touchstart', unlockHandler, { capture: true })
+    }
+
+    // Helper: ensure video is unmuted before every play on mobile
+    const mobilePlay = () => {
+      if (mobile) {
+        video.muted = false
+        video.volume = 1.0
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume()
+      }
+      return video.play()
     }
 
     // --- Create video texture ---
@@ -214,13 +234,7 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       video.loop = false
       video.src = `${CDN}/intro.mov`
       video.load()
-      // On mobile, unmute and use full volume — let hardware buttons control audio
-      if (window.innerWidth / window.innerHeight < 1) {
-        video.muted = false
-        video.volume = 1.0
-        useChannelStore.setState({ isMuted: false, volume: 1.0 })
-      }
-      video.play().catch(() => {
+      mobilePlay().catch(() => {
         if (mounted) enterChannelsMode()
       })
     }
@@ -239,7 +253,7 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       if (src) {
         video.src = src
         video.load()
-        video.play().then(() => {
+        mobilePlay().then(() => {
           if (!mounted) return
           crtMat.noSignal = 0.0
           useChannelStore.setState({ noSignal: false })
@@ -262,7 +276,7 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       crtMat.noSignal = 1.0
       video.src = src
       video.load()
-      video.play().then(() => {
+      mobilePlay().then(() => {
         if (!mounted) return
         crtMat.noSignal = 0.0
       }).catch(() => { if (mounted) enterChannelsMode() })
@@ -331,10 +345,10 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
         return
       }
 
-      // Volume / mute sync — works in all active phases
-      if (s.phase !== 'off') {
+      // Volume / mute sync — desktop only (mobile uses hardware buttons + silent switch)
+      if (s.phase !== 'off' && !mobile) {
         if (s.isMuted !== prev.isMuted) video.muted = s.isMuted
-        if (s.volume !== prev.volume && window.innerWidth / window.innerHeight >= 1) video.volume = s.volume
+        if (s.volume !== prev.volume) video.volume = s.volume
       }
 
       // Channel change — only in channels mode
@@ -353,7 +367,7 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
         useChannelStore.setState({ noSignal: false })
         video.src = url
         video.load()
-        video.play().then(() => {
+        mobilePlay().then(() => {
           if (!mounted) return
           crtMat.noSignal = 0.0
           crtMat.staticAmount = 0.04
@@ -370,7 +384,8 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       mounted = false
       unsub()
       clearTimers()
-      if (unlockHandler) document.removeEventListener('touchstart', unlockHandler)
+      if (unlockHandler) document.removeEventListener('touchstart', unlockHandler, { capture: true })
+      if (audioCtx) audioCtx.close().catch(() => {})
       video.removeEventListener('ended', onEnded)
       video.removeEventListener('waiting', onWaiting)
       video.removeEventListener('playing', onPlaying)
