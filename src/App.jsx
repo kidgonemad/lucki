@@ -10,10 +10,12 @@ import Model from './Model'
 import useChannelStore from './store'
 import './App.css'
 
-// Initialize Theatre.js studio (hidden by default)
-studio.extend(extension)
-studio.initialize()
-studio.ui.hide()
+// Initialize Theatre.js studio (dev only — skip heavy UI init in production)
+if (import.meta.env.DEV) {
+  studio.extend(extension)
+  studio.initialize()
+  studio.ui.hide()
+}
 
 const project = getProject('Lucki TV')
 const sheet = project.sheet('Scene')
@@ -462,6 +464,27 @@ function playClick() {
   clickSound.play().catch(() => {})
 }
 
+// --- Mobile TV Controls (volume + mute) ---
+function MobileTVControls() {
+  const phase = useChannelStore((s) => s.phase)
+  const isMuted = useChannelStore((s) => s.isMuted)
+  const toggleMute = useChannelStore((s) => s.toggleMute)
+  const volumeUp = useChannelStore((s) => s.volumeUp)
+  const volumeDown = useChannelStore((s) => s.volumeDown)
+
+  if (phase === 'off' || !isMobile()) return null
+
+  return (
+    <div className="mobile-tv-controls">
+      <button className="mobile-ctrl-btn" onClick={() => { playClick(); volumeDown() }}>-</button>
+      <button className={`mobile-ctrl-btn mute-btn${isMuted ? ' muted' : ''}`} onClick={() => { playClick(); toggleMute() }}>
+        {isMuted ? 'UNMUTE' : 'MUTE'}
+      </button>
+      <button className="mobile-ctrl-btn" onClick={() => { playClick(); volumeUp() }}>+</button>
+    </div>
+  )
+}
+
 function App() {
   const controlsRef = useRef()
   const [panelVisible, setPanelVisible] = useState(false)
@@ -510,9 +533,11 @@ function App() {
           const next = !v
           // Toggle stats
           document.querySelectorAll('.fps-stats').forEach(el => el.classList.toggle('show', next))
-          // Toggle Theatre.js studio
-          if (next) studio.ui.restore()
-          else studio.ui.hide()
+          // Toggle Theatre.js studio (dev only)
+          if (import.meta.env.DEV) {
+            if (next) studio.ui.restore()
+            else studio.ui.hide()
+          }
           return next
         })
         return
@@ -591,7 +616,8 @@ function App() {
       <Canvas
         camera={{ position: [12.02, 3.64, -26.01], fov: 45 }}
         shadows={!isMobile()}
-        gl={{ antialias: true, toneMapping: 3 }}
+        dpr={isMobile() ? [1, 1.5] : [1, 2]}
+        gl={{ antialias: !isMobile(), toneMapping: 3 }}
       >
         <SheetProvider sheet={sheet}>
           <SceneLights />
@@ -637,6 +663,8 @@ function App() {
       {loaded && panelVisible && (
         <CameraPanel controlsRef={controlsRef} onGoTo={goToView} />
       )}
+
+      {loaded && <MobileTVControls />}
 
       {!loaded && (
         <div className="loading-overlay">

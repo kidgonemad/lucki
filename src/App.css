@@ -447,3 +447,52 @@
   pointer-events: none;
   z-index: 10;
 }
+
+/* Mobile TV controls (volume + mute) */
+.mobile-tv-controls {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.mobile-ctrl-btn {
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.mobile-ctrl-btn:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.mute-btn {
+  min-width: 90px;
+  text-align: center;
+}
+
+.mute-btn.muted {
+  background: rgba(255, 50, 50, 0.25);
+  border-color: rgba(255, 50, 50, 0.35);
+}
+
+@media (min-aspect-ratio: 1/1) {
+  .mobile-tv-controls {
+    display: none;
+  }
+}
