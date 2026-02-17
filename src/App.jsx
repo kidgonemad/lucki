@@ -589,57 +589,20 @@ function App() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [goToView])
 
-  // Mobile: native DOM click handler for iOS audio unlock + DeviceMotion permission.
-  // R3F's synthetic onClick doesn't count as a user gesture on iOS — this does.
+  // Mobile: native DOM click for iOS audio unlock (no DeviceMotion needed)
   useEffect(() => {
     if (!isMobile()) return
 
     const handleNativeClick = () => {
-      // Audio unlock: create + resume AudioContext in a real user gesture
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)()
         if (ctx.state === 'suspended') ctx.resume()
       } catch (_) {}
-
-      // DeviceMotion permission (iOS 13+) — fires on any tap anywhere
-      if (typeof DeviceMotionEvent !== 'undefined' &&
-          typeof DeviceMotionEvent.requestPermission === 'function') {
-        DeviceMotionEvent.requestPermission()
-          .then((state) => {
-            if (state === 'granted') {
-              // Permission granted, stop asking
-              document.removeEventListener('click', handleNativeClick)
-            }
-          })
-          .catch(() => {})
-      } else {
-        // Non-iOS — no permission needed, remove listener
-        document.removeEventListener('click', handleNativeClick)
-      }
+      document.removeEventListener('click', handleNativeClick)
     }
 
     document.addEventListener('click', handleNativeClick)
     return () => document.removeEventListener('click', handleNativeClick)
-  }, [])
-
-  // Shake-to-animate on mobile (bonus — first tap also triggers animation).
-  useEffect(() => {
-    if (!isMobile()) return
-
-    let lastShake = 0
-
-    const handleMotion = (e) => {
-      const a = e.acceleration?.x !== null ? e.acceleration : e.accelerationIncludingGravity
-      if (!a || a.x === null) return
-      const force = Math.abs(a.x) + Math.abs(a.y) + Math.abs(a.z)
-      if (force > 15 && Date.now() - lastShake > 1000) {
-        lastShake = Date.now()
-        useChannelStore.getState().toggleAnimation()
-      }
-    }
-
-    window.addEventListener('devicemotion', handleMotion)
-    return () => window.removeEventListener('devicemotion', handleMotion)
   }, [])
 
   return (
@@ -667,11 +630,20 @@ function App() {
                   const t = mobile ? MOBILE_DEFAULT.target : HARDCODED_DEFAULT.target
                   ctrl.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, false)
                 }
-                // Wait a few frames for GPU to compile shaders behind the overlay
+                // GPU warmup behind overlay
                 requestAnimationFrame(() => {
                   requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
-                      setLoaded(true)
+                      if (mobile) {
+                        // Mobile: wait for GIF to play 3 times (~4.5s), then
+                        // dismiss overlay and auto-play slide-in animation
+                        setTimeout(() => {
+                          setLoaded(true)
+                          useChannelStore.getState().toggleAnimation()
+                        }, 4500)
+                      } else {
+                        setLoaded(true)
+                      }
                     })
                   })
                 })

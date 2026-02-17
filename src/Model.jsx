@@ -325,8 +325,8 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
         return
       }
 
-      // Volume / mute sync — desktop only (mobile uses hardware buttons + silent switch)
-      if (s.phase !== 'off' && !mobile) {
+      // Volume / mute sync
+      if (s.phase !== 'off') {
         if (s.isMuted !== prev.isMuted) video.muted = s.isMuted
         if (s.volume !== prev.volume) video.volume = s.volume
       }
@@ -441,27 +441,23 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       e.stopPropagation()
       const tap = mobileTapRef.current
       if (tap === 0) {
-        // Tap 1 → zoom to TV. Audio unlock via native DOM click (App.jsx).
+        // Tap 1 → turn on TV + unmute + zoom in (Safari audio permission triggers here)
         if (videoRef.current) {
           videoRef.current.muted = false
           videoRef.current.volume = 1.0
         }
         useChannelStore.setState({ isMuted: false, volume: 1.0 })
+        useChannelStore.getState().togglePower()
         onGoTo('tv')
         mobileTapRef.current = 1
       } else if (tap === 1) {
-        // Tap 2 → turn TV on (audio already unlocked from tap 1)
-        if (videoRef.current) videoRef.current.muted = false
-        useChannelStore.getState().togglePower()
+        // Tap 2 → zoom out to default
+        onGoTo('default')
         mobileTapRef.current = 2
       } else if (tap === 2) {
-        // Tap 3 → turn TV off
+        // Tap 3 → turn off TV (already at default view)
         const s = useChannelStore.getState()
         if (s.tvOn) s.togglePower()
-        mobileTapRef.current = 3
-      } else {
-        // Tap 4 → zoom back to default, reset cycle
-        onGoTo('default')
         mobileTapRef.current = 0
       }
       return
