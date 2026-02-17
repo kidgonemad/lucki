@@ -643,10 +643,10 @@ function App() {
                           setOverlayFading(true)
                           // After fade finishes (0.6s), remove overlay
                           setTimeout(() => setLoaded(true), 700)
-                          // Play animation 500ms after overlay gone (scene settled)
+                          // Play animation 1s after overlay gone (scene settled)
                           setTimeout(() => {
                             useChannelStore.setState({ animationPlaying: true })
-                          }, 1200)
+                          }, 1700)
                         }, 4500)
                       } else {
                         setLoaded(true)
