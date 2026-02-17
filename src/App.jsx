@@ -594,33 +594,48 @@ function App() {
     if (!isMobile()) return
 
     let lastShake = 0
+    let listening = false
 
     const handleMotion = (e) => {
-      const a = e.acceleration
+      // Use acceleration, fall back to accelerationIncludingGravity
+      const a = e.acceleration?.x !== null ? e.acceleration : e.accelerationIncludingGravity
       if (!a || a.x === null) return
       const force = Math.abs(a.x) + Math.abs(a.y) + Math.abs(a.z)
-      if (force > 20 && Date.now() - lastShake > 1000) {
+      // Lower threshold (15) to catch moderate shakes; 1s cooldown prevents double-triggers
+      if (force > 15 && Date.now() - lastShake > 1000) {
         lastShake = Date.now()
         useChannelStore.getState().toggleAnimation()
       }
     }
 
-    const startListening = () => window.addEventListener('devicemotion', handleMotion)
+    const startListening = () => {
+      if (listening) return
+      listening = true
+      window.addEventListener('devicemotion', handleMotion)
+    }
 
-    // iOS 13+ requires permission from a user gesture
+    // iOS 13+ requires permission from a user gesture — keep trying on every tap until granted
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
       const onTap = () => {
         DeviceMotionEvent.requestPermission()
-          .then((state) => { if (state === 'granted') startListening() })
+          .then((state) => {
+            if (state === 'granted') {
+              startListening()
+              // Stop asking once granted
+              document.removeEventListener('touchstart', onTap, { capture: true })
+            }
+          })
           .catch(() => {})
       }
-      window.addEventListener('touchstart', onTap, { once: true })
+      // Use capture so it fires before other handlers; NOT once — keep retrying
+      document.addEventListener('touchstart', onTap, { capture: true })
       return () => {
-        window.removeEventListener('touchstart', onTap)
+        document.removeEventListener('touchstart', onTap, { capture: true })
         window.removeEventListener('devicemotion', handleMotion)
       }
     }
 
+    // Android / non-iOS: just start listening immediately
     startListening()
     return () => window.removeEventListener('devicemotion', handleMotion)
   }, [])
