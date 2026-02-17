@@ -468,6 +468,17 @@ function App() {
   const [panelVisible, setPanelVisible] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const mobileTapRef = useRef(0) // mobile tap sequence: 0=ready, 1=zoomed in, 2=tv on
+  const [showUnmute, setShowUnmute] = useState(false)
+  const audioUnlocked = useRef(false)
+  const phase = useChannelStore((s) => s.phase)
+
+  // Show unmute prompt once when TV turns on (mobile only)
+  useEffect(() => {
+    if (phase !== 'off' && isMobile() && !audioUnlocked.current) {
+      setShowUnmute(true)
+    }
+    if (phase === 'off') setShowUnmute(false)
+  }, [phase])
 
   // Go to a camera position (slot object, 'default', or 'tv')
   const goToView = useCallback((slotOrKey) => {
@@ -678,6 +689,21 @@ function App() {
 
       {loaded && panelVisible && (
         <CameraPanel controlsRef={controlsRef} onGoTo={goToView} />
+      )}
+
+      {showUnmute && (
+        <div className="unmute-prompt" onClick={() => {
+          const video = document.querySelector('video')
+          if (video) {
+            video.muted = false
+            video.volume = 1.0
+          }
+          useChannelStore.setState({ isMuted: false, volume: 1.0 })
+          setShowUnmute(false)
+          audioUnlocked.current = true
+        }}>
+          Tap to enable sound
+        </div>
       )}
 
       {!loaded && (
