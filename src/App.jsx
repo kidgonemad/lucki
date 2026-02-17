@@ -622,7 +622,7 @@ function App() {
     return () => document.removeEventListener('click', handleNativeClick)
   }, [])
 
-  // Shake-to-animate on mobile.
+  // Shake-to-animate on mobile (bonus — first tap also triggers animation).
   useEffect(() => {
     if (!isMobile()) return
 
@@ -640,72 +640,6 @@ function App() {
 
     window.addEventListener('devicemotion', handleMotion)
     return () => window.removeEventListener('devicemotion', handleMotion)
-  }, [])
-
-  // Tilt controls on mobile:
-  //   Tilt forward (screen away) → mute
-  //   Tilt back (screen toward you) → unmute
-  //   Tilt right → volume up
-  //   Tilt left → volume down
-  useEffect(() => {
-    if (!isMobile()) return
-
-    // Track which zone the phone is in so we only trigger once per tilt
-    let zone = 'neutral' // 'neutral' | 'forward' | 'back' | 'left' | 'right'
-    let cooldown = 0
-
-    const handleOrientation = (e) => {
-      const s = useChannelStore.getState()
-      if (s.phase === 'off') return
-
-      const now = Date.now()
-      if (now < cooldown) return
-
-      const beta = e.beta   // front-back: 0=flat, positive=upright, negative=screen-down
-      const gamma = e.gamma // left-right: positive=tilted right, negative=tilted left
-
-      if (beta === null || gamma === null) return
-
-      // Tilt forward: beta drops below 20 (phone tilted screen-away-from-you)
-      if (beta < 20 && zone !== 'forward') {
-        zone = 'forward'
-        cooldown = now + 600
-        if (!s.isMuted) s.toggleMute()
-        return
-      }
-
-      // Tilt back: beta goes above 80 (phone tilted screen-toward-you)
-      if (beta > 80 && zone !== 'back') {
-        zone = 'back'
-        cooldown = now + 600
-        if (s.isMuted) s.toggleMute()
-        return
-      }
-
-      // Tilt right: gamma > 35
-      if (gamma > 35 && zone !== 'right') {
-        zone = 'right'
-        cooldown = now + 400
-        s.volumeUp()
-        return
-      }
-
-      // Tilt left: gamma < -35
-      if (gamma < -35 && zone !== 'left') {
-        zone = 'left'
-        cooldown = now + 400
-        s.volumeDown()
-        return
-      }
-
-      // Return to neutral zone (beta 30-70, gamma -20 to 20)
-      if (beta > 30 && beta < 70 && gamma > -20 && gamma < 20) {
-        zone = 'neutral'
-      }
-    }
-
-    window.addEventListener('deviceorientation', handleOrientation)
-    return () => window.removeEventListener('deviceorientation', handleOrientation)
   }, [])
 
   return (

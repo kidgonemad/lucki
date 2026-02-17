@@ -325,8 +325,8 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
         return
       }
 
-      // Volume / mute sync
-      if (s.phase !== 'off') {
+      // Volume / mute sync — desktop only (mobile uses hardware buttons + silent switch)
+      if (s.phase !== 'off' && !mobile) {
         if (s.isMuted !== prev.isMuted) video.muted = s.isMuted
         if (s.volume !== prev.volume) video.volume = s.volume
       }
