@@ -435,11 +435,17 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       e.stopPropagation()
       const tap = mobileTapRef.current
       if (tap === 0) {
-        // Tap 1 → zoom to TV
+        // Tap 1 → zoom to TV. Unlock audio in this gesture so iOS allows unmuted playback.
+        if (videoRef.current) {
+          videoRef.current.muted = false
+          videoRef.current.volume = 1.0
+        }
+        useChannelStore.setState({ isMuted: false, volume: 1.0 })
         onGoTo('tv')
         mobileTapRef.current = 1
       } else if (tap === 1) {
-        // Tap 2 → turn TV on
+        // Tap 2 → turn TV on (audio already unlocked from tap 1)
+        if (videoRef.current) videoRef.current.muted = false
         useChannelStore.getState().togglePower()
         mobileTapRef.current = 2
       } else if (tap === 2) {
