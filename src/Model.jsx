@@ -381,7 +381,10 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
   const animStartX = useRef(null)
 
   useFrame((_, delta) => {
-    if (mixerRef.current) mixerRef.current.update(delta)
+    // Cap delta at 33ms — prevents animation completing in one frame
+    // when browser gives a spike after tab switch or overlay removal
+    const dt = Math.min(delta, 0.033)
+    if (mixerRef.current) mixerRef.current.update(dt)
 
     // Apply the empty's animated X slide as an offset to setup nodes
     if (emptyRef && animationPlaying) {
