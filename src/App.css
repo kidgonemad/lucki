@@ -1,0 +1,449 @@
+#canvas-container {
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+.camera-panel {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  color: #eee;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 13px;
+  min-width: 240px;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.camera-panel h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+/* View toggle */
+.view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.view-btn {
+  flex: 1;
+  padding: 5px 0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  color: #888;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.view-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ccc;
+}
+
+.view-btn.active {
+  background: #2a6df0;
+  border-color: #2a6df0;
+  color: #fff;
+}
+
+.view-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.view-badge {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.view-badge.default {
+  background: rgba(255, 255, 255, 0.08);
+  color: #999;
+}
+
+.view-badge.saved {
+  background: rgba(42, 109, 240, 0.2);
+  color: #6ea8ff;
+}
+
+.view-badge.free {
+  background: rgba(255, 180, 50, 0.15);
+  color: #e0a030;
+}
+
+.section-label {
+  color: #777;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  margin-top: 10px;
+}
+
+.section-label:first-of-type {
+  margin-top: 0;
+}
+
+/* Scrub row */
+.scrub-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.scrub-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.scrub-label {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0 5px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.scrub-value {
+  flex: 1;
+  padding: 5px 6px;
+  color: #ccc;
+  font-size: 12px;
+  cursor: ew-resize;
+  user-select: none;
+  text-align: right;
+  transition: background 0.1s;
+}
+
+.scrub-value:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.scrub-value.dragging {
+  background: rgba(42, 109, 240, 0.15);
+  color: #fff;
+}
+
+.scrub-edit {
+  flex: 1;
+  width: 100%;
+  background: rgba(42, 109, 240, 0.12);
+  border: none;
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 5px 6px;
+  outline: none;
+  text-align: right;
+  -moz-appearance: textfield;
+}
+
+.scrub-edit::-webkit-inner-spin-button,
+.scrub-edit::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Buttons */
+.save-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 7px 0;
+  background: #2a6df0;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.save-btn:hover {
+  background: #1b5cd9;
+}
+
+.save-btn:active {
+  background: #144bb8;
+}
+
+.saved-indicator {
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: rgba(42, 109, 240, 0.15);
+  border-radius: 5px;
+  color: #6ea8ff;
+  font-size: 11px;
+  text-align: center;
+}
+
+.hint {
+  margin-top: 8px;
+  color: #555;
+  font-size: 10px;
+  text-align: center;
+}
+
+/* Camera slots */
+.slots-section {
+  margin-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 4px;
+}
+
+.slots-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.slot-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.15s;
+}
+
+.slot-row.is-default {
+  border-color: rgba(42, 109, 240, 0.3);
+  background: rgba(42, 109, 240, 0.08);
+}
+
+.slot-name {
+  flex: 1;
+  padding: 5px 8px;
+  background: none;
+  border: none;
+  color: #bbb;
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slot-name:hover {
+  color: #fff;
+}
+
+.slot-default-badge {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+  background: #2a6df0;
+  color: #fff;
+  border-radius: 3px;
+  margin-right: 5px;
+  flex-shrink: 0;
+}
+
+.slot-name-edit {
+  flex: 1;
+  padding: 4px 8px;
+  background: rgba(42, 109, 240, 0.12);
+  border: none;
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+  border-radius: 3px;
+}
+
+.slot-actions {
+  display: flex;
+  gap: 1px;
+  padding-right: 2px;
+  flex-shrink: 0;
+}
+
+.slot-act {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.1s;
+}
+
+.slot-act:hover {
+  color: #ccc;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.slot-delete:hover {
+  color: #ff5555;
+  background: rgba(255, 85, 85, 0.1);
+}
+
+/* Export/Import */
+.slots-io {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.io-btn {
+  flex: 1;
+  padding: 5px 0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  color: #888;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.io-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ccc;
+}
+
+/* Layer toggles */
+.layers-section {
+  margin-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 4px;
+}
+
+.layers-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.layer-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: #555;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.layer-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #999;
+}
+
+.layer-toggle.on {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ccc;
+}
+
+.layer-eye {
+  font-size: 8px;
+  line-height: 1;
+}
+
+.anim-toggle {
+  width: 100%;
+  justify-content: center;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+}
+
+.anim-toggle.on {
+  background: rgba(42, 109, 240, 0.15);
+  border-color: rgba(42, 109, 240, 0.3);
+  color: #6ea8ff;
+}
+
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  transition: opacity 0.6s ease-out;
+  opacity: 1;
+}
+
+.loading-overlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-logo {
+  max-width: 200px;
+  max-height: 200px;
+}
+
+.fps-stats {
+  top: auto !important;
+  left: 0 !important;
+  bottom: 0 !important;
+  display: none !important;
+}
+
+.fps-stats.show {
+  display: block !important;
+}
+
+.panel-hidden-hint {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #666;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 10;
+}
