@@ -467,6 +467,7 @@ function App() {
   const controlsRef = useRef()
   const [panelVisible, setPanelVisible] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [overlayFading, setOverlayFading] = useState(false)
   const mobileTapRef = useRef(0) // mobile tap sequence: 0=ready, 1=zoomed in, 2=tv on
 
   // Go to a camera position (slot object, 'default', or 'tv')
@@ -635,11 +636,15 @@ function App() {
                   requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                       if (mobile) {
-                        // Mobile: wait for GIF to play 3 times (~4.5s), then
-                        // dismiss overlay and auto-play slide-in animation
+                        // Mobile: wait for GIF to play 3x (~4.5s), then
+                        // start animation behind overlay, fade overlay out
                         setTimeout(() => {
-                          setLoaded(true)
+                          // Start slide-in animation while overlay still visible
                           useChannelStore.getState().toggleAnimation()
+                          // Begin fade-out after animation has started moving
+                          setTimeout(() => setOverlayFading(true), 200)
+                          // Remove overlay from DOM after fade completes
+                          setTimeout(() => setLoaded(true), 900)
                         }, 4500)
                       } else {
                         setLoaded(true)
@@ -670,7 +675,7 @@ function App() {
       )}
 
       {!loaded && (
-        <div className="loading-overlay">
+        <div className={`loading-overlay${overlayFading ? ' fade-out' : ''}`}>
           <img src={`${import.meta.env.BASE_URL}assets/logo.gif`} alt="Loading" className="loading-logo" />
         </div>
       )}
