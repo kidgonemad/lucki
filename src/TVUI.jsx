@@ -164,14 +164,17 @@ function Buffering() {
 }
 
 // --- Main TVUI (RenderTexture) ---
+const isMobile = () => window.innerWidth / window.innerHeight < 1
+
 const TVUI = forwardRef(function TVUI(props, ref) {
   const phase = useChannelStore((s) => s.phase)
+  const mobile = isMobile()
 
   return (
     <RenderTexture
       ref={ref}
-      width={800}
-      height={600}
+      width={mobile ? 400 : 800}
+      height={mobile ? 300 : 600}
       samples={1}
       stencilBuffer={false}
       generateMipmaps={false}
