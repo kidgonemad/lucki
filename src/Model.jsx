@@ -202,6 +202,12 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       video.loop = false
       video.src = `${CDN}/intro.mov`
       video.load()
+      // On mobile, unmute and use full volume — let hardware buttons control audio
+      if (window.innerWidth / window.innerHeight < 1) {
+        video.muted = false
+        video.volume = 1.0
+        useChannelStore.setState({ isMuted: false, volume: 1.0 })
+      }
       video.play().catch(() => {
         if (mounted) enterChannelsMode()
       })
@@ -316,7 +322,7 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       // Volume / mute sync — works in all active phases
       if (s.phase !== 'off') {
         if (s.isMuted !== prev.isMuted) video.muted = s.isMuted
-        if (s.volume !== prev.volume) video.volume = s.volume
+        if (s.volume !== prev.volume && window.innerWidth / window.innerHeight >= 1) video.volume = s.volume
       }
 
       // Channel change — only in channels mode

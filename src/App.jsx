@@ -464,27 +464,6 @@ function playClick() {
   clickSound.play().catch(() => {})
 }
 
-// --- Mobile TV Controls (volume + mute) ---
-function MobileTVControls() {
-  const phase = useChannelStore((s) => s.phase)
-  const isMuted = useChannelStore((s) => s.isMuted)
-  const toggleMute = useChannelStore((s) => s.toggleMute)
-  const volumeUp = useChannelStore((s) => s.volumeUp)
-  const volumeDown = useChannelStore((s) => s.volumeDown)
-
-  if (phase === 'off' || !isMobile()) return null
-
-  return (
-    <div className="mobile-tv-controls">
-      <button className="mobile-ctrl-btn" onClick={() => { playClick(); volumeDown() }}>-</button>
-      <button className={`mobile-ctrl-btn mute-btn${isMuted ? ' muted' : ''}`} onClick={() => { playClick(); toggleMute() }}>
-        {isMuted ? 'UNMUTE' : 'MUTE'}
-      </button>
-      <button className="mobile-ctrl-btn" onClick={() => { playClick(); volumeUp() }}>+</button>
-    </div>
-  )
-}
-
 function App() {
   const controlsRef = useRef()
   const [panelVisible, setPanelVisible] = useState(false)
@@ -663,8 +642,6 @@ function App() {
       {loaded && panelVisible && (
         <CameraPanel controlsRef={controlsRef} onGoTo={goToView} />
       )}
-
-      {loaded && <MobileTVControls />}
 
       {!loaded && (
         <div className="loading-overlay">
