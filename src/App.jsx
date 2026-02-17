@@ -187,7 +187,6 @@ function SceneLights() {
         penumbra={0.5}
         intensity={0}
       />
-      <Environment preset="studio" />
     </>
   )
 }
@@ -638,6 +637,7 @@ function App() {
           <SceneLights />
 
           <Suspense fallback={<Loader />}>
+            <Environment preset="studio" />
             <Model
               controlsRef={controlsRef}
               onGoTo={goToView}
@@ -650,8 +650,14 @@ function App() {
                   const t = mobile ? MOBILE_DEFAULT.target : HARDCODED_DEFAULT.target
                   ctrl.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, false)
                 }
-                // Let loading screen fade out first, then start animation
-                setLoaded(true)
+                // Wait a few frames for GPU to compile shaders behind the overlay
+                requestAnimationFrame(() => {
+                  requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                      setLoaded(true)
+                    })
+                  })
+                })
               }}
             />
           </Suspense>
