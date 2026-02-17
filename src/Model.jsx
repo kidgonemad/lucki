@@ -140,6 +140,18 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
     document.body.appendChild(video)
     videoRef.current = video
 
+    // Silently unlock audio on first touch (iOS Safari requirement)
+    const mobile = window.innerWidth / window.innerHeight < 1
+    let unlockHandler = null
+    if (mobile) {
+      unlockHandler = () => {
+        video.muted = false
+        video.volume = 1.0
+        useChannelStore.setState({ isMuted: false, volume: 1.0 })
+      }
+      document.addEventListener('touchstart', unlockHandler, { once: true })
+    }
+
     // --- Create video texture ---
     const videoTexture = new VideoTexture(video)
     videoTexture.colorSpace = SRGBColorSpace
@@ -358,6 +370,7 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       mounted = false
       unsub()
       clearTimers()
+      if (unlockHandler) document.removeEventListener('touchstart', unlockHandler)
       video.removeEventListener('ended', onEnded)
       video.removeEventListener('waiting', onWaiting)
       video.removeEventListener('playing', onPlaying)
