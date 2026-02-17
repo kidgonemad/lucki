@@ -590,6 +590,42 @@ function App() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [goToView])
 
+  // Shake-to-animate on mobile (replaces auto-play)
+  useEffect(() => {
+    if (!isMobile()) return
+
+    let lastShake = 0
+
+    const handleMotion = (e) => {
+      const a = e.acceleration
+      if (!a || a.x === null) return
+      const force = Math.abs(a.x) + Math.abs(a.y) + Math.abs(a.z)
+      if (force > 20 && Date.now() - lastShake > 1000) {
+        lastShake = Date.now()
+        useChannelStore.getState().toggleAnimation()
+      }
+    }
+
+    const startListening = () => window.addEventListener('devicemotion', handleMotion)
+
+    // iOS 13+ requires permission from a user gesture
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+      const onTap = () => {
+        DeviceMotionEvent.requestPermission()
+          .then((state) => { if (state === 'granted') startListening() })
+          .catch(() => {})
+      }
+      window.addEventListener('touchstart', onTap, { once: true })
+      return () => {
+        window.removeEventListener('touchstart', onTap)
+        window.removeEventListener('devicemotion', handleMotion)
+      }
+    }
+
+    startListening()
+    return () => window.removeEventListener('devicemotion', handleMotion)
+  }, [])
+
   return (
     <div id="canvas-container">
       <Canvas
@@ -616,11 +652,6 @@ function App() {
                 }
                 // Let loading screen fade out first, then start animation
                 setLoaded(true)
-                if (mobile) {
-                  setTimeout(() => {
-                    useChannelStore.getState().toggleAnimation()
-                  }, 250)
-                }
               }}
             />
           </Suspense>
