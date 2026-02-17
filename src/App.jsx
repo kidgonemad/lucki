@@ -668,6 +668,7 @@ function App() {
             maxDistance={100}
             smoothTime={0.25}
             draggingSmoothTime={0.1}
+            enabled={!isMobile()}
           />
 
           <WASDControls controlsRef={controlsRef} />
