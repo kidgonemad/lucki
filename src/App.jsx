@@ -589,54 +589,27 @@ function App() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [goToView])
 
-  // Shake-to-animate on mobile (replaces auto-play)
+  // Shake-to-animate on mobile (replaces auto-play).
+  // iOS permission is requested in Model.jsx handleClick (tap 0) — a real user gesture.
+  // This effect just listens for devicemotion once permission is available.
   useEffect(() => {
     if (!isMobile()) return
 
     let lastShake = 0
-    let listening = false
 
     const handleMotion = (e) => {
-      // Use acceleration, fall back to accelerationIncludingGravity
       const a = e.acceleration?.x !== null ? e.acceleration : e.accelerationIncludingGravity
       if (!a || a.x === null) return
       const force = Math.abs(a.x) + Math.abs(a.y) + Math.abs(a.z)
-      // Lower threshold (15) to catch moderate shakes; 1s cooldown prevents double-triggers
       if (force > 15 && Date.now() - lastShake > 1000) {
         lastShake = Date.now()
         useChannelStore.getState().toggleAnimation()
       }
     }
 
-    const startListening = () => {
-      if (listening) return
-      listening = true
-      window.addEventListener('devicemotion', handleMotion)
-    }
-
-    // iOS 13+ requires permission from a user gesture — keep trying on every tap until granted
-    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-      const onTap = () => {
-        DeviceMotionEvent.requestPermission()
-          .then((state) => {
-            if (state === 'granted') {
-              startListening()
-              // Stop asking once granted
-              document.removeEventListener('touchstart', onTap, { capture: true })
-            }
-          })
-          .catch(() => {})
-      }
-      // Use capture so it fires before other handlers; NOT once — keep retrying
-      document.addEventListener('touchstart', onTap, { capture: true })
-      return () => {
-        document.removeEventListener('touchstart', onTap, { capture: true })
-        window.removeEventListener('devicemotion', handleMotion)
-      }
-    }
-
-    // Android / non-iOS: just start listening immediately
-    startListening()
+    // On iOS, the listener won't fire until permission is granted (handled in handleClick).
+    // On Android, it works immediately.
+    window.addEventListener('devicemotion', handleMotion)
     return () => window.removeEventListener('devicemotion', handleMotion)
   }, [])
 

@@ -140,34 +140,14 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
     document.body.appendChild(video)
     videoRef.current = video
 
-    // Mobile audio unlock — iOS Safari requires user gesture to unmute.
-    // We create an AudioContext and resume it on first touch to unlock web audio,
-    // then keep video unmuted. Hardware volume buttons and silent switch handle the rest.
     const mobile = window.innerWidth / window.innerHeight < 1
-    let audioCtx = null
-    let unlockHandler = null
-    if (mobile) {
-      unlockHandler = () => {
-        // Resume AudioContext to unlock web audio on iOS
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-        if (audioCtx.state === 'suspended') audioCtx.resume()
-        // Force unmute — this is within a user gesture so iOS will honour it
-        video.muted = false
-        video.volume = 1.0
-        // Re-trigger play so iOS associates the unmuted state with this gesture
-        if (video.src && !video.paused) video.play().catch(() => {})
-        useChannelStore.setState({ isMuted: false, volume: 1.0 })
-      }
-      // Use capture + not once: keep trying on every touch until audio is actually unlocked
-      document.addEventListener('touchstart', unlockHandler, { capture: true })
-    }
 
-    // Helper: ensure video is unmuted before every play on mobile
+    // Helper: ensure video is unmuted before every play on mobile.
+    // Audio unlock happens in handleClick (a real click gesture iOS trusts).
     const mobilePlay = () => {
       if (mobile) {
         video.muted = false
         video.volume = 1.0
-        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume()
       }
       return video.play()
     }
@@ -384,8 +364,6 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       mounted = false
       unsub()
       clearTimers()
-      if (unlockHandler) document.removeEventListener('touchstart', unlockHandler, { capture: true })
-      if (audioCtx) audioCtx.close().catch(() => {})
       video.removeEventListener('ended', onEnded)
       video.removeEventListener('waiting', onWaiting)
       video.removeEventListener('playing', onPlaying)
@@ -463,10 +441,26 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       e.stopPropagation()
       const tap = mobileTapRef.current
       if (tap === 0) {
-        // Tap 1 → zoom to TV. Unlock audio in this gesture so iOS allows unmuted playback.
+        // Tap 1 → zoom to TV.
+        // This is a real click gesture — iOS Safari trusts it for:
+        // 1) Audio unlock (unmute video)
+        // 2) DeviceMotion permission (shake-to-animate)
         if (videoRef.current) {
           videoRef.current.muted = false
           videoRef.current.volume = 1.0
+          // Re-trigger play within this gesture so iOS binds unmuted state
+          if (videoRef.current.src && !videoRef.current.paused) {
+            videoRef.current.play().catch(() => {})
+          }
+        }
+        // Create AudioContext in this gesture to unlock web audio
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)()
+          if (ctx.state === 'suspended') ctx.resume()
+        } catch (_) {}
+        // Request DeviceMotion permission (iOS 13+) in this gesture
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+          DeviceMotionEvent.requestPermission().catch(() => {})
         }
         useChannelStore.setState({ isMuted: false, volume: 1.0 })
         onGoTo('tv')
