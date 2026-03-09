@@ -1,5 +1,5 @@
 import { Suspense, useRef, useState, useCallback, useEffect } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { CameraControls, Environment, Stats } from '@react-three/drei'
 import { Vector3 } from 'three'
 import { getProject } from '@theatre/core'
@@ -162,6 +162,13 @@ function FpsTracker({ fpsRef }) {
   useFrame((_, delta) => {
     if (delta > 0) fpsRef.current = fpsRef.current * 0.85 + (1 / delta) * 0.15
   })
+  return null
+}
+
+// --- GL ref capture (for DPR control outside Canvas) ---
+function GlCapture({ glRef }) {
+  const { gl } = useThree()
+  glRef.current = gl
   return null
 }
 
@@ -530,7 +537,7 @@ function playClick() {
 
 function App() {
   const controlsRef = useRef()
-  const tvHoverRef = useRef(false)
+  const glRef = useRef(null)
   const [panelVisible, setPanelVisible] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [overlayFading, setOverlayFading] = useState(false)
@@ -578,6 +585,12 @@ function App() {
     } else {
       p = slotOrKey.position
       t = slotOrKey.target
+    }
+    // Drop DPR during zoom-in to reduce fragment load (zoom-out is already smooth)
+    if (slotOrKey === 'tv' && !mobile && glRef.current) {
+      const origDpr = glRef.current.getPixelRatio()
+      glRef.current.setPixelRatio(1)
+      setTimeout(() => glRef.current?.setPixelRatio(origDpr), 1000)
     }
     // Quick cinematic transition
     const origSmooth = ctrl.smoothTime
@@ -702,9 +715,7 @@ function App() {
   }, [])
 
   return (
-    <div id="canvas-container" onClick={() => {
-      if (!isMobile() && tvHoverRef.current) goToView('tv')
-    }}>
+    <div id="canvas-container">
       <Canvas
         camera={{ position: [12.02, 3.64, -26.01], fov: 45 }}
         shadows={!isMobile()}
@@ -719,7 +730,6 @@ function App() {
             <Model
               controlsRef={controlsRef}
               onGoTo={goToView}
-              tvHoverRef={tvHoverRef}
               mobileTapRef={mobileTapRef}
               onReady={() => {
                 const ctrl = controlsRef.current
@@ -750,29 +760,31 @@ function App() {
                           useChannelStore.setState({ animationPlaying: true })
                         }, 5500)
                       } else {
-                        // Desktop: full animated warmup behind overlay
-                        // Animate default→TV→default with same smoothTime as real transitions
-                        // so every intermediate shadow angle gets pre-compiled
+                        // Desktop warmup behind overlay:
+                        // 1. INSTANT snap to TV_CLOSE_UP so GPU compiles shaders for that exact view
+                        // 2. Play animation so GPU compiles for animated geometry
+                        // 3. Smooth animate back to default (same path the user takes)
                         useChannelStore.setState({ animationPlaying: true })
                         if (ctrl) {
-                          ctrl.smoothTime = 0.7
+                          // Instant snap — forces GPU to render from TV_CLOSE_UP immediately
                           ctrl.setLookAt(
                             TV_CLOSE_UP.position.x, TV_CLOSE_UP.position.y, TV_CLOSE_UP.position.z,
                             TV_CLOSE_UP.target.x, TV_CLOSE_UP.target.y, TV_CLOSE_UP.target.z,
-                            true
+                            false // instant, not animated
                           )
                         }
-                        // Camera settled at TV — animate back to default
+                        // Hold at TV_CLOSE_UP for a few frames, then smoothly return to default
                         setTimeout(() => {
                           if (ctrl) {
+                            ctrl.smoothTime = 0.7
                             ctrl.setLookAt(
                               HARDCODED_DEFAULT.position.x, HARDCODED_DEFAULT.position.y, HARDCODED_DEFAULT.position.z,
                               HARDCODED_DEFAULT.target.x, HARDCODED_DEFAULT.target.y, HARDCODED_DEFAULT.target.z,
                               true
                             )
                           }
-                        }, 1500)
-                        // Full animation duration done — stop anim, reset smoothTime
+                        }, 200)
+                        // Stop animation, reset smoothTime
                         setTimeout(() => {
                           useChannelStore.setState({ animationPlaying: false })
                           if (ctrl) ctrl.smoothTime = 0.25
@@ -799,6 +811,7 @@ function App() {
 
           <WASDControls controlsRef={controlsRef} />
           <FpsTracker fpsRef={fpsRef} />
+          <GlCapture glRef={glRef} />
           <Stats className="fps-stats" />
         </SheetProvider>
       </Canvas>

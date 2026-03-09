@@ -17,7 +17,7 @@ useGLTF.preload(GLB_URL, undefined, undefined, (loader) => {
   loader.setDRACOLoader(dracoLoader)
 })
 
-export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, tvHoverRef, ...props }) {
+export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...props }) {
   const { scene, animations } = useGLTF(GLB_URL, undefined, undefined, (loader) => {
     loader.setDRACOLoader(dracoLoader)
   })
@@ -446,9 +446,6 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, tvHo
   const handleClick = (e) => {
     const mobile = window.innerWidth / window.innerHeight < 1
 
-    // Desktop clicks handled by DOM handler in App.jsx (no R3F raycasting cost)
-    if (!mobile) return
-
     if (mobile && mobileTapRef) {
       e.stopPropagation()
       const tap = mobileTapRef.current
@@ -482,17 +479,11 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, tvHo
   }
 
   const handlePointerOver = (e) => {
-    if (isTVMesh(e.object)) {
-      document.body.style.cursor = 'pointer'
-      if (tvHoverRef) tvHoverRef.current = true
-    }
+    if (isTVMesh(e.object)) document.body.style.cursor = 'pointer'
   }
 
   const handlePointerOut = (e) => {
-    if (isTVMesh(e.object)) {
-      document.body.style.cursor = 'default'
-      if (tvHoverRef) tvHoverRef.current = false
-    }
+    if (isTVMesh(e.object)) document.body.style.cursor = 'default'
   }
 
   return (
