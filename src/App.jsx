@@ -177,7 +177,7 @@ function SceneLights() {
         position={[5, 8, 5]}
         intensity={sl.keyLight ? 1.5 : 0}
         castShadow={!isMobile() && sl.keyLight}
-        shadow-mapSize={[1024, 1024]}
+        shadow-mapSize={[512, 512]}
       />
       <e.directionalLight
         theatreKey="Fill Light"
@@ -429,7 +429,11 @@ function FpsLogSection({ fpsRef, logRef }) {
         <>
           <div className="fps-log-header">Event Log</div>
           <pre className="fps-log-entries">
-            {log.map((e, i) => `→ ${e.label.padEnd(20)} ${String(e.fps).padStart(3)}fps${e.fps < 45 ? ' ▼' : ''}`).join('\n')}
+            {log.map((e) => {
+              const fpsStr = typeof e.fps === 'number' ? String(e.fps).padStart(3) : e.fps
+              const drop = typeof e.fps === 'number' && e.fps < 45 ? ' ▼' : ''
+              return `→ ${e.label.padEnd(20)} ${fpsStr}fps${drop}`
+            }).join('\n')}
           </pre>
         </>
       )}
@@ -531,14 +535,24 @@ function App() {
   const [overlayFading, setOverlayFading] = useState(false)
   const mobileTapRef = useRef(0) // mobile tap sequence: 0=ready, 1=zoomed in, 2=tv on
 
-  // FPS logger
+  // FPS logger — captures min fps over 600ms after event to catch the actual drop
   const fpsRef = useRef(60)
   const logRef = useRef([])
   const [, setLogVersion] = useState(0)
   const logEvent = useCallback((label) => {
-    const fps = Math.round(fpsRef.current)
-    logRef.current = [{ label, fps }, ...logRef.current].slice(0, 10)
+    logRef.current = [{ label, fps: '…' }, ...logRef.current].slice(0, 10)
     setLogVersion(v => v + 1)
+    let minFps = fpsRef.current
+    let ticks = 0
+    const id = setInterval(() => {
+      if (fpsRef.current < minFps) minFps = fpsRef.current
+      ticks++
+      if (ticks >= 12) {
+        clearInterval(id)
+        logRef.current[0] = { label, fps: Math.round(minFps) }
+        setLogVersion(v => v + 1)
+      }
+    }, 50)
   }, [])
 
   // Go to a camera position (slot object, 'default', or 'tv')
@@ -732,7 +746,25 @@ function App() {
                           useChannelStore.setState({ animationPlaying: true })
                         }, 5500)
                       } else {
-                        setLoaded(true)
+                        // Desktop: warmup GPU behind loading overlay
+                        // Flash to TV close-up + play animation so shaders/shadows pre-compile
+                        if (ctrl) {
+                          const p = TV_CLOSE_UP.position
+                          const t = TV_CLOSE_UP.target
+                          ctrl.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, false)
+                        }
+                        useChannelStore.setState({ animationPlaying: true })
+                        setTimeout(() => {
+                          useChannelStore.setState({ animationPlaying: false })
+                          // Return to default cam
+                          if (ctrl) {
+                            const p = HARDCODED_DEFAULT.position
+                            const t = HARDCODED_DEFAULT.target
+                            ctrl.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, false)
+                          }
+                          setOverlayFading(true)
+                        }, 1800)
+                        setTimeout(() => setLoaded(true), 2400)
                       }
                     })
                   })
