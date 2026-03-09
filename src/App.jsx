@@ -746,25 +746,35 @@ function App() {
                           useChannelStore.setState({ animationPlaying: true })
                         }, 5500)
                       } else {
-                        // Desktop: warmup GPU behind loading overlay
-                        // Flash to TV close-up + play animation so shaders/shadows pre-compile
-                        if (ctrl) {
-                          const p = TV_CLOSE_UP.position
-                          const t = TV_CLOSE_UP.target
-                          ctrl.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, false)
-                        }
+                        // Desktop: full animated warmup behind overlay
+                        // Animate default→TV→default with same smoothTime as real transitions
+                        // so every intermediate shadow angle gets pre-compiled
                         useChannelStore.setState({ animationPlaying: true })
+                        if (ctrl) {
+                          ctrl.smoothTime = 0.7
+                          ctrl.setLookAt(
+                            TV_CLOSE_UP.position.x, TV_CLOSE_UP.position.y, TV_CLOSE_UP.position.z,
+                            TV_CLOSE_UP.target.x, TV_CLOSE_UP.target.y, TV_CLOSE_UP.target.z,
+                            true
+                          )
+                        }
+                        // Camera settled at TV — animate back to default
+                        setTimeout(() => {
+                          if (ctrl) {
+                            ctrl.setLookAt(
+                              HARDCODED_DEFAULT.position.x, HARDCODED_DEFAULT.position.y, HARDCODED_DEFAULT.position.z,
+                              HARDCODED_DEFAULT.target.x, HARDCODED_DEFAULT.target.y, HARDCODED_DEFAULT.target.z,
+                              true
+                            )
+                          }
+                        }, 1500)
+                        // Full animation duration done — stop anim, reset smoothTime
                         setTimeout(() => {
                           useChannelStore.setState({ animationPlaying: false })
-                          // Return to default cam
-                          if (ctrl) {
-                            const p = HARDCODED_DEFAULT.position
-                            const t = HARDCODED_DEFAULT.target
-                            ctrl.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, false)
-                          }
-                          setOverlayFading(true)
-                        }, 1800)
-                        setTimeout(() => setLoaded(true), 2400)
+                          if (ctrl) ctrl.smoothTime = 0.25
+                        }, 2500)
+                        setTimeout(() => setOverlayFading(true), 3000)
+                        setTimeout(() => setLoaded(true), 3600)
                       }
                     })
                   })
