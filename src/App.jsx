@@ -157,35 +157,44 @@ function WASDControls({ controlsRef }) {
   return null
 }
 
-// --- Scene Lights (Theatre.js editable) ---
+// --- FPS Tracker (inside Canvas) ---
+function FpsTracker({ fpsRef }) {
+  useFrame((_, delta) => {
+    if (delta > 0) fpsRef.current = fpsRef.current * 0.85 + (1 / delta) * 0.15
+  })
+  return null
+}
+
+// --- Scene Lights (Theatre.js editable, toggled via store) ---
 function SceneLights() {
+  const sl = useChannelStore((s) => s.sceneLights)
   return (
     <>
       <color attach="background" args={['#ffffff']} />
-      <ambientLight intensity={0.3} />
+      <ambientLight intensity={sl.ambient ? 0.3 : 0} />
       <e.directionalLight
         theatreKey="Key Light"
         position={[5, 8, 5]}
-        intensity={1.5}
-        castShadow={!isMobile()}
+        intensity={sl.keyLight ? 1.5 : 0}
+        castShadow={!isMobile() && sl.keyLight}
         shadow-mapSize={[1024, 1024]}
       />
       <e.directionalLight
         theatreKey="Fill Light"
         position={[-3, 4, -5]}
-        intensity={0.5}
+        intensity={sl.fillLight ? 0.5 : 0}
       />
       <e.pointLight
         theatreKey="Point Light"
         position={[0, 6, -20]}
-        intensity={0}
+        intensity={sl.pointLight ? 2 : 0}
       />
       <e.spotLight
         theatreKey="Spot Light"
         position={[0, 10, -20]}
         angle={0.3}
         penumbra={0.5}
-        intensity={0}
+        intensity={sl.spotLight ? 2 : 0}
       />
     </>
   )
@@ -193,13 +202,15 @@ function SceneLights() {
 
 // --- Layer & Animation Panel ---
 const LAYER_LABELS = [
-  ['lightBars', 'Light Bars'],
-  ['pipes', 'Pipes'],
-  ['cylinders', 'Cylinders'],
-  ['cubes', 'Cubes'],
-  ['planes', 'Planes'],
   ['guitarStrap', 'Guitar Strap'],
-  ['curves', 'Curves'],
+]
+
+const LIGHT_LABELS = [
+  ['ambient', 'Ambient'],
+  ['keyLight', 'Key Light'],
+  ['fillLight', 'Fill Light'],
+  ['pointLight', 'Point Light'],
+  ['spotLight', 'Spot Light'],
 ]
 
 function LayersPanel() {
@@ -207,8 +218,8 @@ function LayersPanel() {
   const toggle = useChannelStore((s) => s.toggleLayer)
   const animPlaying = useChannelStore((s) => s.animationPlaying)
   const toggleAnim = useChannelStore((s) => s.toggleAnimation)
-  const envVisible = useChannelStore((s) => s.envVisible)
-  const toggleEnv = useChannelStore((s) => s.toggleEnv)
+  const sceneLights = useChannelStore((s) => s.sceneLights)
+  const toggleLight = useChannelStore((s) => s.toggleSceneLight)
 
   return (
     <div className="layers-section">
@@ -221,15 +232,21 @@ function LayersPanel() {
         {animPlaying ? 'Playing' : 'Stopped'}
       </button>
 
+      <div className="section-label">Lights</div>
+      <div className="layers-grid">
+        {LIGHT_LABELS.map(([key, label]) => (
+          <button
+            key={key}
+            className={`layer-toggle${sceneLights[key] ? ' on' : ''}`}
+            onClick={() => toggleLight(key)}
+          >
+            <span className="layer-eye">{sceneLights[key] ? '●' : '○'}</span>
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="section-label">Layers</div>
-      <button
-        className={`layer-toggle${envVisible ? ' on' : ''}`}
-        onClick={toggleEnv}
-        style={{ width: '100%', marginBottom: 4 }}
-      >
-        <span className="layer-eye">{envVisible ? '●' : '○'}</span>
-        Environment
-      </button>
       <div className="layers-grid">
         {LAYER_LABELS.map(([key, label]) => (
           <button
@@ -378,8 +395,34 @@ function CameraSlots({ controlsRef, onGoTo }) {
   )
 }
 
+// --- FPS Log Section (shown inside H panel) ---
+function FpsLogSection({ fpsRef, logRef }) {
+  const [fpsDisplay, setFpsDisplay] = useState(60)
+
+  useEffect(() => {
+    const id = setInterval(() => setFpsDisplay(Math.round(fpsRef.current)), 500)
+    return () => clearInterval(id)
+  }, [fpsRef])
+
+  const log = logRef.current
+  return (
+    <div className="fps-log-section">
+      <div className="section-label">Performance</div>
+      <div className="fps-display">FPS: {fpsDisplay}</div>
+      {log.length > 0 && (
+        <>
+          <div className="fps-log-header">Event Log</div>
+          <pre className="fps-log-entries">
+            {log.map((e, i) => `→ ${e.label.padEnd(20)} ${String(e.fps).padStart(3)}fps${e.fps < 45 ? ' ▼' : ''}`).join('\n')}
+          </pre>
+        </>
+      )}
+    </div>
+  )
+}
+
 // --- Main Camera Panel ---
-function CameraPanel({ controlsRef, onGoTo }) {
+function CameraPanel({ controlsRef, onGoTo, fpsRef, logRef }) {
   const [pos, setPos] = useState({ x: 0, y: 0, z: 5 })
   const [target, setTarget] = useState({ x: 0, y: 0, z: 0 })
   const interactingRef = useRef(false)
@@ -446,6 +489,8 @@ function CameraPanel({ controlsRef, onGoTo }) {
 
       <LayersPanel />
 
+      <FpsLogSection fpsRef={fpsRef} logRef={logRef} />
+
       <div className="hint">WASD &mdash; move &middot; QE &mdash; up/down &middot; Shift &mdash; fast</div>
       <div className="hint">O &mdash; TV on/off &middot; H &mdash; hide panel &middot; L &mdash; animation</div>
       <div className="hint">&uarr;&darr; &mdash; channels &middot; +/- &mdash; volume &middot; M &mdash; mute</div>
@@ -469,6 +514,16 @@ function App() {
   const [loaded, setLoaded] = useState(false)
   const [overlayFading, setOverlayFading] = useState(false)
   const mobileTapRef = useRef(0) // mobile tap sequence: 0=ready, 1=zoomed in, 2=tv on
+
+  // FPS logger
+  const fpsRef = useRef(60)
+  const logRef = useRef([])
+  const [, setLogVersion] = useState(0)
+  const logEvent = useCallback((label) => {
+    const fps = Math.round(fpsRef.current)
+    logRef.current = [{ label, fps }, ...logRef.current].slice(0, 10)
+    setLogVersion(v => v + 1)
+  }, [])
 
   // Go to a camera position (slot object, 'default', or 'tv')
   const goToView = useCallback((slotOrKey) => {
@@ -523,6 +578,7 @@ function App() {
       }
       if (e.code === 'Space') {
         e.preventDefault()
+        logEvent('Camera reset')
         goToView('default')
         return
       }
@@ -531,7 +587,10 @@ function App() {
       if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
         e.preventDefault()
         const idx = parseInt(e.key) - 1
-        if (s.cameraSlots[idx]) goToView(s.cameraSlots[idx])
+        if (s.cameraSlots[idx]) {
+          logEvent(`Camera slot ${e.key}`)
+          goToView(s.cameraSlots[idx])
+        }
         return
       }
 
@@ -543,12 +602,14 @@ function App() {
 
       // Animation toggle
       if (e.key === 'l' || e.key === 'L') {
+        logEvent('Anim toggle')
         s.toggleAnimation()
         return
       }
 
       // TV power toggle
       if (e.key === 'o' || e.key === 'O') {
+        logEvent(s.tvOn ? 'TV power off' : 'TV power on')
         playClick()
         s.togglePower()
         return
@@ -572,23 +633,26 @@ function App() {
       if (s.phase !== 'channels') return
       if (e.key === 'ArrowUp') {
         e.preventDefault()
+        logEvent('Channel up')
         playClick()
         s.nextChannel()
       }
       if (e.key === 'ArrowDown') {
         e.preventDefault()
+        logEvent('Channel down')
         playClick()
         s.prevChannel()
       }
       const digit = parseInt(e.key)
       if (!isNaN(digit)) {
+        logEvent(`Channel #${digit}`)
         playClick()
         s.enterChannelNumber(digit)
       }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [goToView])
+  }, [goToView, logEvent])
 
   // Mobile: native DOM click for iOS audio unlock (no DeviceMotion needed)
   useEffect(() => {
@@ -672,12 +736,13 @@ function App() {
           />
 
           <WASDControls controlsRef={controlsRef} />
+          <FpsTracker fpsRef={fpsRef} />
           <Stats className="fps-stats" />
         </SheetProvider>
       </Canvas>
 
       {loaded && panelVisible && (
-        <CameraPanel controlsRef={controlsRef} onGoTo={goToView} />
+        <CameraPanel controlsRef={controlsRef} onGoTo={goToView} fpsRef={fpsRef} logRef={logRef} />
       )}
 
       {!loaded && (

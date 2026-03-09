@@ -137,27 +137,24 @@ const useChannelStore = create((set, get) => ({
     set({ cameraSlots: slots })
   },
 
-  // Environment master toggle — hides all set dressing, keeps TV setup
-  envVisible: false,
-  toggleEnv: () => set((s) => {
-    const next = !s.envVisible
-    const allLayers = {}
-    for (const key of Object.keys(s.layers)) allLayers[key] = next
-    return { envVisible: next, layers: allLayers }
-  }),
-
   // Layer visibility toggles
   layers: {
-    lightBars: false,
-    pipes: false,
-    cylinders: false,
-    cubes: false,
-    planes: false,
     guitarStrap: false,
-    curves: false,
   },
   toggleLayer: (key) => set((s) => ({
     layers: { ...s.layers, [key]: !s.layers[key] },
+  })),
+
+  // Scene light toggles
+  sceneLights: {
+    ambient: true,
+    keyLight: true,
+    fillLight: true,
+    pointLight: false,
+    spotLight: false,
+  },
+  toggleSceneLight: (key) => set((s) => ({
+    sceneLights: { ...s.sceneLights, [key]: !s.sceneLights[key] },
   })),
 }))
 
