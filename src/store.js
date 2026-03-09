@@ -159,6 +159,18 @@ const useChannelStore = create((set, get) => ({
   toggleLayer: (key) => set((s) => ({
     layers: { ...s.layers, [key]: !s.layers[key] },
   })),
+
+  // Scene light toggles
+  sceneLights: {
+    ambient: true,
+    keyLight: true,
+    fillLight: true,
+    pointLight: false,
+    spotLight: false,
+  },
+  toggleSceneLight: (key) => set((s) => ({
+    sceneLights: { ...s.sceneLights, [key]: !s.sceneLights[key] },
+  })),
 }))
 
 export default useChannelStore
