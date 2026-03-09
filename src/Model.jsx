@@ -9,9 +9,9 @@ import TVUI from './TVUI'
 
 // Set up Draco decoder for compressed GLB
 const dracoLoader = new DRACOLoader()
-dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/')
+dracoLoader.setDecoderPath(`${import.meta.env.BASE_URL}draco/`)
 const CDN = 'https://pub-48d4141ea8154377b15f818e23442153.r2.dev'
-const GLB_URL = `${CDN}/lucki-tv.glb`
+const GLB_URL = `${import.meta.env.BASE_URL}assets/tv-optimized.glb`
 
 useGLTF.preload(GLB_URL, undefined, undefined, (loader) => {
   loader.setDRACOLoader(dracoLoader)
@@ -57,6 +57,12 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       else if (n.startsWith('BezierCurve')) groups.curves.push(child)
       else if (EXTRA_ENV_PREFIXES.some(p => n.startsWith(p))) extraEnv.push(child)
     })
+
+    // DEBUG: log what nodes ended up in each layer group
+    console.log('Layer groups:', Object.fromEntries(Object.entries(groups).map(([k,v]) => [k, v.length])))
+    console.log('Extra env:', extraEnv.length)
+    console.log('All node names:', [])
+    scene.traverse((c) => { if (c.name) console.log(' ', c.name) })
 
     // Direct-children pass: animNodes + emptyRef
     const ENV_PREFIXES = ['Bottom_light', 'Bottom light', 'pipe', 'Cylinder', 'Cube', 'Plane', 'dc36a', 'Empty', 'BezierCurve']
