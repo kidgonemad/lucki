@@ -202,7 +202,13 @@ function SceneLights() {
 
 // --- Layer & Animation Panel ---
 const LAYER_LABELS = [
+  ['lightBars', 'Light Bars'],
+  ['pipes', 'Pipes'],
+  ['cylinders', 'Cylinders'],
+  ['cubes', 'Cubes'],
+  ['planes', 'Planes'],
   ['guitarStrap', 'Guitar Strap'],
+  ['curves', 'Curves'],
 ]
 
 const LIGHT_LABELS = [
@@ -218,6 +224,8 @@ function LayersPanel() {
   const toggle = useChannelStore((s) => s.toggleLayer)
   const animPlaying = useChannelStore((s) => s.animationPlaying)
   const toggleAnim = useChannelStore((s) => s.toggleAnimation)
+  const envVisible = useChannelStore((s) => s.envVisible)
+  const toggleEnv = useChannelStore((s) => s.toggleEnv)
   const sceneLights = useChannelStore((s) => s.sceneLights)
   const toggleLight = useChannelStore((s) => s.toggleSceneLight)
 
@@ -247,6 +255,14 @@ function LayersPanel() {
       </div>
 
       <div className="section-label">Layers</div>
+      <button
+        className={`layer-toggle${envVisible ? ' on' : ''}`}
+        onClick={toggleEnv}
+        style={{ width: '100%', marginBottom: 4 }}
+      >
+        <span className="layer-eye">{envVisible ? '●' : '○'}</span>
+        Environment
+      </button>
       <div className="layers-grid">
         {LAYER_LABELS.map(([key, label]) => (
           <button

@@ -11,7 +11,7 @@ import TVUI from './TVUI'
 const dracoLoader = new DRACOLoader()
 dracoLoader.setDecoderPath(`${import.meta.env.BASE_URL}draco/`)
 const CDN = 'https://pub-48d4141ea8154377b15f818e23442153.r2.dev'
-const GLB_URL = `${import.meta.env.BASE_URL}assets/tv-stripped.glb`
+const GLB_URL = `${import.meta.env.BASE_URL}assets/tv-optimized.glb`
 
 useGLTF.preload(GLB_URL, undefined, undefined, (loader) => {
   loader.setDRACOLoader(dracoLoader)
@@ -29,12 +29,17 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
   const powerTargetRef = useRef(0)
   const lastOffsetRef = useRef(null)
 
-  // Single-pass scene traversal: collect nodes and apply tint
+  // Single-pass scene traversal: collect all nodes and apply tint in one walk
   const { tvNode, screenMesh, animNodes, layerGroups, emptyRef } = useMemo(() => {
     let _tvNode = null
     let _screenMesh = null
     const blackMats = new Set(['TVfront', 'Electronics plastic', 'White'])
-    const groups = { guitarStrap: [] }
+    const groups = {
+      lightBars: [], pipes: [], cylinders: [], cubes: [],
+      planes: [], guitarStrap: [], curves: [],
+    }
+    const extraEnv = []
+    const EXTRA_ENV_PREFIXES = ['dc36a', 'Empty', 'Bottom_light', 'Bottom light']
 
     scene.traverse((child) => {
       const n = child.name
@@ -43,16 +48,31 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
         if (child.material.name === 'TVScreen') _screenMesh = child
         if (blackMats.has(child.material.name)) child.material.color = new Color(0x000000)
       }
-      if (n.includes('Guitar') && n.includes('strap')) groups.guitarStrap.push(child)
+      if (n.startsWith('Bottom_light_bars') || n.startsWith('Bottom light bars')) groups.lightBars.push(child)
+      else if (n.startsWith('pipe')) groups.pipes.push(child)
+      else if (n.startsWith('Cylinder')) groups.cylinders.push(child)
+      else if (n.startsWith('Cube')) groups.cubes.push(child)
+      else if (n.startsWith('Plane')) groups.planes.push(child)
+      else if (n.includes('Guitar') && n.includes('strap')) groups.guitarStrap.push(child)
+      else if (n.startsWith('BezierCurve')) groups.curves.push(child)
+      else if (EXTRA_ENV_PREFIXES.some(p => n.startsWith(p))) extraEnv.push(child)
     })
 
+    // DEBUG: log what nodes ended up in each layer group
+    console.log('Layer groups:', Object.fromEntries(Object.entries(groups).map(([k,v]) => [k, v.length])))
+    console.log('Extra env:', extraEnv.length)
+    console.log('All node names:', [])
+    scene.traverse((c) => { if (c.name) console.log(' ', c.name) })
+
     // Direct-children pass: animNodes + emptyRef
+    const ENV_PREFIXES = ['Bottom_light', 'Bottom light', 'pipe', 'Cylinder', 'Cube', 'Plane', 'dc36a', 'Empty', 'BezierCurve']
+    const isEnv = (name) => ENV_PREFIXES.some(p => name.startsWith(p))
     const nodes = []
     const origX = []
     let _emptyRef = null
     for (const child of scene.children) {
       if (child.name === 'MODEL__EMPTY') _emptyRef = child
-      else {
+      else if (!isEnv(child.name)) {
         nodes.push(child)
         origX.push(child.position.x)
       }
@@ -62,7 +82,7 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       tvNode: _tvNode,
       screenMesh: _screenMesh,
       animNodes: { nodes, origX },
-      layerGroups: groups,
+      layerGroups: { groups, extraEnv },
       emptyRef: _emptyRef,
     }
   }, [scene])
@@ -99,12 +119,15 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
 
   // Sync layer visibility from store
   const layers = useChannelStore((s) => s.layers)
+  const envVisible = useChannelStore((s) => s.envVisible)
   useEffect(() => {
-    for (const [key, nodes] of Object.entries(layerGroups)) {
+    for (const [key, nodes] of Object.entries(layerGroups.groups)) {
       const vis = layers[key]
       for (const node of nodes) node.visible = vis
     }
-  }, [layers, layerGroups])
+    // Extra env nodes follow the master env toggle
+    for (const node of layerGroups.extraEnv) node.visible = envVisible
+  }, [layers, envVisible, layerGroups])
 
   useEffect(() => { if (onReady) onReady() }, [])
 
