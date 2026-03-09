@@ -1,5 +1,5 @@
 import { Suspense, useRef, useState, useCallback, useEffect } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { CameraControls, Environment, Stats } from '@react-three/drei'
 import { Vector3 } from 'three'
 import { getProject } from '@theatre/core'
@@ -161,6 +161,20 @@ function WASDControls({ controlsRef }) {
 function FpsTracker({ fpsRef }) {
   useFrame((_, delta) => {
     if (delta > 0) fpsRef.current = fpsRef.current * 0.85 + (1 / delta) * 0.15
+  })
+  return null
+}
+
+// --- Shadow Manager: freeze shadow map during camera transitions ---
+function ShadowManager({ freezeRef }) {
+  const { gl } = useThree()
+  useFrame(() => {
+    if (freezeRef.current) {
+      gl.shadowMap.autoUpdate = false
+      gl.shadowMap.needsUpdate = false
+    } else {
+      gl.shadowMap.autoUpdate = true
+    }
   })
   return null
 }
@@ -530,6 +544,7 @@ function playClick() {
 
 function App() {
   const controlsRef = useRef()
+  const shadowFreezeRef = useRef(false)
   const [panelVisible, setPanelVisible] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [overlayFading, setOverlayFading] = useState(false)
@@ -578,6 +593,9 @@ function App() {
       p = slotOrKey.position
       t = slotOrKey.target
     }
+    // Freeze shadow map during transition to prevent per-frame recalculation lag
+    shadowFreezeRef.current = true
+    setTimeout(() => { shadowFreezeRef.current = false }, 900)
     // Quick cinematic transition
     const origSmooth = ctrl.smoothTime
     ctrl.smoothTime = mobile ? 0.4 : 0.7
@@ -795,6 +813,7 @@ function App() {
 
           <WASDControls controlsRef={controlsRef} />
           <FpsTracker fpsRef={fpsRef} />
+          <ShadowManager freezeRef={shadowFreezeRef} />
           <Stats className="fps-stats" />
         </SheetProvider>
       </Canvas>
