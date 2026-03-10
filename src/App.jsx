@@ -532,50 +532,46 @@ const LOGOS = [
   { src: 'logo8.png', size: 210, x: -4, y: -4 },
 ]
 
+// CSS keyframe animations — run on compositor thread, immune to main-thread load
+// Each logo fades in/out during its 1s slot in an 8s cycle with 0.5s crossfades
+const CYCLE_S = LOGOS.length       // 8s total
+const FADE_PCT = (0.5 / CYCLE_S) * 100  // 6.25% per fade
+
+const logoKeyframeCSS = LOGOS.map((_, i) => {
+  const peak = (i / LOGOS.length) * 100
+  const fi = (peak - FADE_PCT).toFixed(3)
+  const fo = (peak + FADE_PCT).toFixed(3)
+  const p = peak.toFixed(3)
+  if (i === 0) {
+    // Wraps around 0%/100% boundary
+    return `@keyframes logo-${i}{0%{opacity:1}${fo}%{opacity:0}${(100 - FADE_PCT).toFixed(3)}%{opacity:0}100%{opacity:1}}`
+  }
+  return `@keyframes logo-${i}{0%{opacity:0}${fi}%{opacity:0}${p}%{opacity:1}${fo}%{opacity:0}100%{opacity:0}}`
+}).join('')
+
 function LogoAnimation() {
-  const [current, setCurrent] = useState(0)
-  const [hidden, setHidden] = useState(false)
-  const [flash, setFlash] = useState(false)
-  const flashKey = useRef(0)
-
-  // Preload all images so src swaps are instant (no size/content mismatch)
-  useEffect(() => {
-    LOGOS.forEach(l => {
-      const img = new Image()
-      img.src = `${import.meta.env.BASE_URL}loading/${l.src}`
-    })
-  }, [])
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setHidden(true)
-      setTimeout(() => {
-        flashKey.current++
-        setFlash(true)
-        setTimeout(() => setFlash(false), 250)
-        setCurrent(c => (c + 1) % LOGOS.length)
-        setHidden(false)
-      }, 120)
-    }, 500)
-    return () => clearInterval(id)
-  }, [])
-
-  const l = LOGOS[current]
   return (
-    <div className="loading-logo-wrap">
-      <img
-        className={`loading-logo-img${hidden ? ' hidden' : ''}`}
-        src={`${import.meta.env.BASE_URL}loading/${l.src}`}
-        alt="Loading"
-        style={{
-          width: l.size,
-          height: l.size,
-          left: `calc(50% - ${l.size / 2}px + ${l.x}px)`,
-          top: `calc(50% - ${l.size / 2}px + ${l.y}px)`,
-        }}
-      />
-      {flash && <div key={flashKey.current} className="loading-flash fire" />}
-    </div>
+    <>
+      <style>{logoKeyframeCSS}</style>
+      <div className="loading-logo-wrap">
+        {LOGOS.map((l, i) => (
+          <img
+            key={i}
+            src={`${import.meta.env.BASE_URL}loading/${l.src}`}
+            alt=""
+            style={{
+              position: 'absolute',
+              objectFit: 'contain',
+              width: l.size,
+              height: l.size,
+              left: `calc(50% - ${l.size / 2}px + ${l.x}px)`,
+              top: `calc(50% - ${l.size / 2}px + ${l.y}px)`,
+              animation: `logo-${i} ${CYCLE_S}s ease-in-out infinite`,
+            }}
+          />
+        ))}
+      </div>
+    </>
   )
 }
 
