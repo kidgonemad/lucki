@@ -1,5 +1,5 @@
 import { Suspense, useRef, useState, useCallback, useEffect } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { CameraControls, Environment, Stats } from '@react-three/drei'
 import { Vector3 } from 'three'
 import { getProject } from '@theatre/core'
@@ -162,6 +162,13 @@ function FpsTracker({ fpsRef }) {
   useFrame((_, delta) => {
     if (delta > 0) fpsRef.current = fpsRef.current * 0.85 + (1 / delta) * 0.15
   })
+  return null
+}
+
+// --- GL capture (access gl outside Canvas) ---
+function GlCapture({ glRef }) {
+  const { gl } = useThree()
+  glRef.current = gl
   return null
 }
 
@@ -530,6 +537,7 @@ function playClick() {
 
 function App() {
   const controlsRef = useRef()
+  const glRef = useRef(null)
   const tvHoverRef = useRef(false)
   const [panelVisible, setPanelVisible] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -578,6 +586,18 @@ function App() {
     } else {
       p = slotOrKey.position
       t = slotOrKey.target
+    }
+    // Zoom-in only: drop DPR + freeze shadow map to cut GPU load during approach
+    if (slotOrKey === 'tv' && !mobile && glRef.current) {
+      const gl = glRef.current
+      const origDpr = gl.getPixelRatio()
+      gl.setPixelRatio(1)
+      gl.shadowMap.autoUpdate = false
+      gl.shadowMap.needsUpdate = false
+      setTimeout(() => {
+        gl.setPixelRatio(origDpr)
+        gl.shadowMap.autoUpdate = true
+      }, 1000)
     }
     // Quick cinematic transition
     const origSmooth = ctrl.smoothTime
@@ -799,6 +819,7 @@ function App() {
 
           <WASDControls controlsRef={controlsRef} />
           <FpsTracker fpsRef={fpsRef} />
+          <GlCapture glRef={glRef} />
           <Stats className="fps-stats" />
         </SheetProvider>
       </Canvas>
