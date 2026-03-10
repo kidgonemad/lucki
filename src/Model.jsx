@@ -72,19 +72,10 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       }
     }
 
-    // Disable raycasting on all meshes outside the TV node.
-    // R3F raycasts every mesh that has a pointer handler on a parent — with 53 meshes
-    // this costs 300ms+ per click. Limiting to TV-only meshes cuts it to <1ms.
+    // Disable raycasting on ALL meshes — pointer handling done via DOM events only
     const noop = () => {}
     scene.traverse((child) => {
-      if (!child.isMesh) return
-      let node = child
-      let isTV = false
-      while (node) {
-        if (node === _tvNode) { isTV = true; break }
-        node = node.parent
-      }
-      if (!isTV) child.raycast = noop
+      if (child.isMesh) child.raycast = noop
     })
 
     return {
@@ -487,21 +478,11 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
     onGoTo('tv')
   }
 
-  const handlePointerOver = (e) => {
-    if (isTVMesh(e.object)) document.body.style.cursor = 'pointer'
-  }
-
-  const handlePointerOut = (e) => {
-    if (isTVMesh(e.object)) document.body.style.cursor = 'default'
-  }
-
   return (
     <>
       <primitive
         object={scene}
         onClick={handleClick}
-        onPointerOver={handlePointerOver}
-        onPointerOut={handlePointerOut}
         {...props}
       />
       <TVUI ref={tvuiRef} />

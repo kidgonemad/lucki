@@ -703,7 +703,7 @@ function App() {
 
   return (
     <div id="canvas-container" onClick={() => {
-      if (!isMobile() && tvHoverRef.current) goToView('tv')
+      if (!isMobile()) goToView('tv')
     }}>
       <Canvas
         camera={{ position: [12.02, 3.64, -26.01], fov: 45 }}
