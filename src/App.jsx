@@ -520,6 +520,57 @@ function CameraPanel({ controlsRef, onGoTo, fpsRef, logRef }) {
   )
 }
 
+// --- Loading Logo Animation ---
+const LOGOS = [
+  { src: 'logo1.png', size: 248, x: 0,  y: 0  },
+  { src: 'logo2.png', size: 165, x: 10, y: -7 },
+  { src: 'logo3.png', size: 215, x: 7,  y: 6  },
+  { src: 'logo4.png', size: 253, x: 3,  y: -1 },
+  { src: 'logo5.png', size: 214, x: 9,  y: 8  },
+  { src: 'logo6.png', size: 188, x: 3,  y: 4  },
+  { src: 'logo7.png', size: 245, x: 5,  y: -6 },
+  { src: 'logo8.png', size: 210, x: -4, y: -4 },
+]
+
+function LogoAnimation() {
+  const [current, setCurrent] = useState(0)
+  const [hidden, setHidden] = useState(false)
+  const [flash, setFlash] = useState(false)
+  const flashKey = useRef(0)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setHidden(true)
+      setTimeout(() => {
+        flashKey.current++
+        setFlash(true)
+        setTimeout(() => setFlash(false), 350)
+        setCurrent(c => (c + 1) % LOGOS.length)
+        setHidden(false)
+      }, 150)
+    }, 1800)
+    return () => clearInterval(id)
+  }, [])
+
+  const l = LOGOS[current]
+  return (
+    <div className="loading-logo-wrap">
+      <img
+        className={`loading-logo-img${hidden ? ' hidden' : ''}`}
+        src={`${import.meta.env.BASE_URL}loading/${l.src}`}
+        alt="Loading"
+        style={{
+          width: l.size,
+          height: l.size,
+          left: `calc(50% - ${l.size / 2}px + ${l.x}px)`,
+          top: `calc(50% - ${l.size / 2}px + ${l.y}px)`,
+        }}
+      />
+      {flash && <div key={flashKey.current} className="loading-flash fire" />}
+    </div>
+  )
+}
+
 // Click sound for channel/volume actions
 const clickSound = typeof Audio !== 'undefined' ? new Audio(`${import.meta.env.BASE_URL}tv-ui-assets/sounds/remote-click.mp3`) : null
 function playClick() {
@@ -826,7 +877,7 @@ function App() {
 
       {!loaded && (
         <div className={`loading-overlay${overlayFading ? ' fade-out' : ''}`}>
-          <img src={`${import.meta.env.BASE_URL}assets/logo.gif`} alt="Loading" className="loading-logo" />
+          <LogoAnimation />
         </div>
       )}
     </div>
