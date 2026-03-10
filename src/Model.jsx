@@ -17,7 +17,7 @@ useGLTF.preload(GLB_URL, undefined, undefined, (loader) => {
   loader.setDRACOLoader(dracoLoader)
 })
 
-export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...props }) {
+export default function Model({ controlsRef, onGoTo, onReady, ...props }) {
   const { scene, animations } = useGLTF(GLB_URL, undefined, undefined, (loader) => {
     loader.setDRACOLoader(dracoLoader)
   })
@@ -433,56 +433,10 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
     }
   })
 
-  const isTVMesh = (object) => {
-    if (!tvNode) return false
-    let current = object
-    while (current) {
-      if (current === tvNode) return true
-      current = current.parent
-    }
-    return false
-  }
-
-  const handleClick = (e) => {
-    const mobile = window.innerWidth / window.innerHeight < 1
-
-    if (mobile && mobileTapRef) {
-      e.stopPropagation()
-      const tap = mobileTapRef.current
-      if (tap === 0) {
-        // Tap 1 → turn on TV + unmute + zoom in (Safari audio permission triggers here)
-        if (videoRef.current) {
-          videoRef.current.muted = false
-          videoRef.current.volume = 1.0
-        }
-        useChannelStore.setState({ isMuted: false, volume: 1.0 })
-        useChannelStore.getState().togglePower()
-        onGoTo('tv')
-        mobileTapRef.current = 1
-      } else if (tap === 1) {
-        // Tap 2 → zoom out to default
-        onGoTo('default')
-        mobileTapRef.current = 2
-      } else if (tap === 2) {
-        // Tap 3 → turn off TV (already at default view)
-        const s = useChannelStore.getState()
-        if (s.tvOn) s.togglePower()
-        mobileTapRef.current = 0
-      }
-      return
-    }
-
-    // Desktop: only respond to TV mesh clicks
-    if (!isTVMesh(e.object)) return
-    e.stopPropagation()
-    onGoTo('tv')
-  }
-
   return (
     <>
       <primitive
         object={scene}
-        onClick={handleClick}
         {...props}
       />
       <TVUI ref={tvuiRef} />

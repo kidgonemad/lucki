@@ -703,7 +703,25 @@ function App() {
 
   return (
     <div id="canvas-container" onClick={() => {
-      if (!isMobile()) goToView('tv')
+      if (!isMobile()) {
+        goToView('tv')
+      } else {
+        // Mobile 3-tap sequence (R3F onClick disabled — no raycasting)
+        const tap = mobileTapRef.current
+        if (tap === 0) {
+          useChannelStore.setState({ isMuted: false, volume: 1.0 })
+          useChannelStore.getState().togglePower()
+          goToView('tv')
+          mobileTapRef.current = 1
+        } else if (tap === 1) {
+          goToView('default')
+          mobileTapRef.current = 2
+        } else if (tap === 2) {
+          const s = useChannelStore.getState()
+          if (s.tvOn) s.togglePower()
+          mobileTapRef.current = 0
+        }
+      }
     }}>
       <Canvas
         camera={{ position: [12.02, 3.64, -26.01], fov: 45 }}
@@ -719,8 +737,6 @@ function App() {
             <Model
               controlsRef={controlsRef}
               onGoTo={goToView}
-              tvHoverRef={tvHoverRef}
-              mobileTapRef={mobileTapRef}
               onReady={() => {
                 const ctrl = controlsRef.current
                 const mobile = isMobile()
@@ -734,25 +750,16 @@ function App() {
                   requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                       if (mobile) {
-                        // Warmup: play animation invisibly behind the overlay
-                        // so GPU caches the entire animation path
                         useChannelStore.setState({ animationPlaying: true })
-                        // After animation finishes (~2.5s), reset it
+                        // Fade overlay at 4.5s, reveal at 5.2s
+                        setTimeout(() => setOverlayFading(true), 4500)
+                        setTimeout(() => setLoaded(true), 5200)
+                        // Stop animation AFTER overlay gone so GPU stays warm for first L press
                         setTimeout(() => {
                           useChannelStore.setState({ animationPlaying: false })
-                        }, 2500)
-                        // At 4.5s: fade overlay
-                        setTimeout(() => setOverlayFading(true), 4500)
-                        // At 5.2s: overlay gone
-                        setTimeout(() => setLoaded(true), 5200)
-                        // At 5.5s: play animation for real (GPU warm, smooth)
-                        setTimeout(() => {
-                          useChannelStore.setState({ animationPlaying: true })
                         }, 5500)
                       } else {
-                        // Desktop: full animated warmup behind overlay
-                        // Animate default→TV→default with same smoothTime as real transitions
-                        // so every intermediate shadow angle gets pre-compiled
+                        // Desktop warmup: camera to TV + animation, both stay alive past overlay lift
                         useChannelStore.setState({ animationPlaying: true })
                         if (ctrl) {
                           ctrl.smoothTime = 0.7
@@ -762,7 +769,6 @@ function App() {
                             true
                           )
                         }
-                        // Camera settled at TV — animate back to default
                         setTimeout(() => {
                           if (ctrl) {
                             ctrl.setLookAt(
@@ -772,13 +778,13 @@ function App() {
                             )
                           }
                         }, 1500)
-                        // Full animation duration done — stop anim, reset smoothTime
-                        setTimeout(() => {
-                          useChannelStore.setState({ animationPlaying: false })
-                          if (ctrl) ctrl.smoothTime = 0.25
-                        }, 2500)
+                        setTimeout(() => { if (ctrl) ctrl.smoothTime = 0.25 }, 2500)
                         setTimeout(() => setOverlayFading(true), 3000)
                         setTimeout(() => setLoaded(true), 3600)
+                        // Stop animation AFTER overlay gone — GPU stays warm for first L press
+                        setTimeout(() => {
+                          useChannelStore.setState({ animationPlaying: false })
+                        }, 3800)
                       }
                     })
                   })
