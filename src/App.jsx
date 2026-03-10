@@ -538,6 +538,14 @@ function LogoAnimation() {
   const [flash, setFlash] = useState(false)
   const flashKey = useRef(0)
 
+  // Preload all images so src swaps are instant (no size/content mismatch)
+  useEffect(() => {
+    LOGOS.forEach(l => {
+      const img = new Image()
+      img.src = `${import.meta.env.BASE_URL}loading/${l.src}`
+    })
+  }, [])
+
   useEffect(() => {
     const id = setInterval(() => {
       setHidden(true)
