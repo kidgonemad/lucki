@@ -552,11 +552,11 @@ function LogoAnimation() {
       setTimeout(() => {
         flashKey.current++
         setFlash(true)
-        setTimeout(() => setFlash(false), 200)
+        setTimeout(() => setFlash(false), 250)
         setCurrent(c => (c + 1) % LOGOS.length)
         setHidden(false)
-      }, 80)
-    }, 220)
+      }, 120)
+    }, 600)
     return () => clearInterval(id)
   }, [])
 
