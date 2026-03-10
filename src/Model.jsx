@@ -58,12 +58,6 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
       else if (EXTRA_ENV_PREFIXES.some(p => n.startsWith(p))) extraEnv.push(child)
     })
 
-    // DEBUG: log what nodes ended up in each layer group
-    console.log('Layer groups:', Object.fromEntries(Object.entries(groups).map(([k,v]) => [k, v.length])))
-    console.log('Extra env:', extraEnv.length)
-    console.log('All node names:', [])
-    scene.traverse((c) => { if (c.name) console.log(' ', c.name) })
-
     // Direct-children pass: animNodes + emptyRef
     const ENV_PREFIXES = ['Bottom_light', 'Bottom light', 'pipe', 'Cylinder', 'Cube', 'Plane', 'dc36a', 'Empty', 'BezierCurve']
     const isEnv = (name) => ENV_PREFIXES.some(p => name.startsWith(p))
@@ -77,6 +71,21 @@ export default function Model({ controlsRef, onGoTo, onReady, mobileTapRef, ...p
         origX.push(child.position.x)
       }
     }
+
+    // Disable raycasting on all meshes outside the TV node.
+    // R3F raycasts every mesh that has a pointer handler on a parent — with 53 meshes
+    // this costs 300ms+ per click. Limiting to TV-only meshes cuts it to <1ms.
+    const noop = () => {}
+    scene.traverse((child) => {
+      if (!child.isMesh) return
+      let node = child
+      let isTV = false
+      while (node) {
+        if (node === _tvNode) { isTV = true; break }
+        node = node.parent
+      }
+      if (!isTV) child.raycast = noop
+    })
 
     return {
       tvNode: _tvNode,
