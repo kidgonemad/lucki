@@ -17,12 +17,14 @@ useGLTF.preload(GLB_URL, undefined, undefined, (loader) => {
   loader.setDRACOLoader(dracoLoader)
 })
 
-export default function Model({ controlsRef, onGoTo, onReady, ...props }) {
+export default function Model({ controlsRef, onGoTo, onReady, onAnimationEnd, ...props }) {
   const { scene, animations } = useGLTF(GLB_URL, undefined, undefined, (loader) => {
     loader.setDRACOLoader(dracoLoader)
   })
   const mixerRef = useRef(null)
   const actionRef = useRef(null)
+  const onAnimationEndRef = useRef(onAnimationEnd)
+  useEffect(() => { onAnimationEndRef.current = onAnimationEnd })
   const videoRef = useRef(null)
   const materialRef = useRef(null)
   const tvuiRef = useRef(null)
@@ -94,7 +96,11 @@ export default function Model({ controlsRef, onGoTo, onReady, ...props }) {
     mixerRef.current = mixer
     actionRef.current = mixer.clipAction(animations[0])
 
+    const onFinished = () => { if (onAnimationEndRef.current) onAnimationEndRef.current() }
+    mixer.addEventListener('finished', onFinished)
+
     return () => {
+      mixer.removeEventListener('finished', onFinished)
       mixer.stopAllAction()
       mixer.uncacheRoot(scene)
       mixerRef.current = null

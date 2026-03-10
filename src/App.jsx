@@ -530,11 +530,19 @@ function playClick() {
 
 function App() {
   const controlsRef = useRef()
-  const tvHoverRef = useRef(false)
   const [panelVisible, setPanelVisible] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [overlayFading, setOverlayFading] = useState(false)
   const mobileTapRef = useRef(0) // mobile tap sequence: 0=ready, 1=zoomed in, 2=tv on
+  const onAnimEndCallbackRef = useRef(null)
+
+  // Called by Model when the animation mixer fires 'finished'
+  const handleModelAnimEnd = useCallback(() => {
+    if (onAnimEndCallbackRef.current) {
+      onAnimEndCallbackRef.current()
+      onAnimEndCallbackRef.current = null
+    }
+  }, [])
 
   // FPS logger — captures min fps over 600ms after event to catch the actual drop
   const fpsRef = useRef(60)
@@ -737,6 +745,7 @@ function App() {
             <Model
               controlsRef={controlsRef}
               onGoTo={goToView}
+              onAnimationEnd={handleModelAnimEnd}
               onReady={() => {
                 const ctrl = controlsRef.current
                 const mobile = isMobile()
@@ -745,20 +754,24 @@ function App() {
                   const t = mobile ? MOBILE_DEFAULT.target : HARDCODED_DEFAULT.target
                   ctrl.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, false)
                 }
-                // GPU warmup behind overlay
+                // GPU warmup behind overlay — event-driven reveal (no fixed timeouts)
                 requestAnimationFrame(() => {
                   requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                       if (mobile) {
-                        useChannelStore.setState({ animationPlaying: true })
-                        // Stop animation during fade so nodes are back at rest before reveal
-                        setTimeout(() => setOverlayFading(true), 4500)
-                        setTimeout(() => {
+                        // Mobile: play animation once; reveal when 'finished' fires
+                        onAnimEndCallbackRef.current = () => {
+                          // Stop anim so nodes reset during fade, then restart after reveal
                           useChannelStore.setState({ animationPlaying: false })
-                        }, 4600)
-                        setTimeout(() => setLoaded(true), 5200)
+                          setOverlayFading(true)
+                          setTimeout(() => {
+                            setLoaded(true)
+                            setTimeout(() => useChannelStore.setState({ animationPlaying: true }), 100)
+                          }, 700)
+                        }
+                        useChannelStore.setState({ animationPlaying: true })
                       } else {
-                        // Desktop warmup: camera to TV + animation, both stay alive past overlay lift
+                        // Desktop: camera warmup — reveal when camera settles back at default
                         useChannelStore.setState({ animationPlaying: true })
                         if (ctrl) {
                           ctrl.smoothTime = 0.7
@@ -767,23 +780,22 @@ function App() {
                             TV_CLOSE_UP.target.x, TV_CLOSE_UP.target.y, TV_CLOSE_UP.target.z,
                             true
                           )
-                        }
-                        setTimeout(() => {
-                          if (ctrl) {
+                          setTimeout(() => {
                             ctrl.setLookAt(
                               HARDCODED_DEFAULT.position.x, HARDCODED_DEFAULT.position.y, HARDCODED_DEFAULT.position.z,
                               HARDCODED_DEFAULT.target.x, HARDCODED_DEFAULT.target.y, HARDCODED_DEFAULT.target.z,
                               true
                             )
-                          }
-                        }, 1500)
-                        setTimeout(() => { if (ctrl) ctrl.smoothTime = 0.25 }, 2500)
-                        setTimeout(() => setOverlayFading(true), 4000)
-                        setTimeout(() => setLoaded(true), 4600)
-                        // Stop animation AFTER overlay gone — GPU stays warm for first L press
-                        setTimeout(() => {
-                          useChannelStore.setState({ animationPlaying: false })
-                        }, 4800)
+                            const onRest = () => {
+                              ctrl.removeEventListener('rest', onRest)
+                              ctrl.smoothTime = 0.25
+                              useChannelStore.setState({ animationPlaying: false })
+                              setOverlayFading(true)
+                              setTimeout(() => setLoaded(true), 700)
+                            }
+                            ctrl.addEventListener('rest', onRest)
+                          }, 1500)
+                        }
                       }
                     })
                   })
