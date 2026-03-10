@@ -751,13 +751,12 @@ function App() {
                     requestAnimationFrame(() => {
                       if (mobile) {
                         useChannelStore.setState({ animationPlaying: true })
-                        // Fade overlay at 4.5s, reveal at 5.2s
+                        // Stop animation during fade so nodes are back at rest before reveal
                         setTimeout(() => setOverlayFading(true), 4500)
-                        setTimeout(() => setLoaded(true), 5200)
-                        // Stop animation AFTER overlay gone so GPU stays warm for first L press
                         setTimeout(() => {
                           useChannelStore.setState({ animationPlaying: false })
-                        }, 5500)
+                        }, 4600)
+                        setTimeout(() => setLoaded(true), 5200)
                       } else {
                         // Desktop warmup: camera to TV + animation, both stay alive past overlay lift
                         useChannelStore.setState({ animationPlaying: true })
