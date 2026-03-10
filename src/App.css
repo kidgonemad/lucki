@@ -428,7 +428,7 @@
 .loading-logo-img {
   position: absolute;
   object-fit: contain;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.07s ease;
 }
 
 .loading-logo-img.hidden {
