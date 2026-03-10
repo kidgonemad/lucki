@@ -779,12 +779,12 @@ function App() {
                           }
                         }, 1500)
                         setTimeout(() => { if (ctrl) ctrl.smoothTime = 0.25 }, 2500)
-                        setTimeout(() => setOverlayFading(true), 3000)
-                        setTimeout(() => setLoaded(true), 3600)
+                        setTimeout(() => setOverlayFading(true), 4000)
+                        setTimeout(() => setLoaded(true), 4600)
                         // Stop animation AFTER overlay gone — GPU stays warm for first L press
                         setTimeout(() => {
                           useChannelStore.setState({ animationPlaying: false })
-                        }, 3800)
+                        }, 4800)
                       }
                     })
                   })
