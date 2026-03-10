@@ -556,7 +556,7 @@ function LogoAnimation() {
         setCurrent(c => (c + 1) % LOGOS.length)
         setHidden(false)
       }, 120)
-    }, 600)
+    }, 500)
     return () => clearInterval(id)
   }, [])
 
