@@ -655,21 +655,8 @@ function App() {
       if (e.target.tagName === 'INPUT') return
       const s = useChannelStore.getState()
 
-      // Camera controls always work
-      if (e.key === 'h' || e.key === 'H') {
-        setPanelVisible((v) => {
-          const next = !v
-          // Toggle stats
-          document.querySelectorAll('.fps-stats').forEach(el => el.classList.toggle('show', next))
-          // Toggle Theatre.js studio (dev only)
-          if (import.meta.env.DEV) {
-            if (next) studio.ui.restore()
-            else studio.ui.hide()
-          }
-          return next
-        })
-        return
-      }
+      // H key debug panel toggle — disabled
+      // if (e.key === 'h' || e.key === 'H') { ... }
       if (e.code === 'Space') {
         e.preventDefault()
         logEvent('Camera reset')
