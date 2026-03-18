@@ -588,6 +588,8 @@ function App() {
   const [panelVisible, setPanelVisible] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [overlayFading, setOverlayFading] = useState(false)
+  const [animDone, setAnimDone] = useState(false)
+  const [stickyFalling, setStickyFalling] = useState(false)
   const mobileTapRef = useRef(0) // mobile tap sequence: 0=ready, 1=zoomed in, 2=tv on
   const onAnimEndCallbackRef = useRef(null)
 
@@ -596,6 +598,9 @@ function App() {
     if (onAnimEndCallbackRef.current) {
       onAnimEndCallbackRef.current()
       onAnimEndCallbackRef.current = null
+    } else {
+      // Second animation (visible replay) finished
+      setAnimDone(true)
     }
   }, [])
 
@@ -681,12 +686,7 @@ function App() {
         return
       }
 
-      // Animation toggle
-      if (e.key === 'l' || e.key === 'L') {
-        logEvent('Anim toggle')
-        s.toggleAnimation()
-        return
-      }
+      // L key — animation toggle disabled (auto-plays like mobile)
 
       // TV power toggle
       if (e.key === 'o' || e.key === 'O') {
@@ -813,31 +813,17 @@ function App() {
                         }
                         useChannelStore.setState({ animationPlaying: true })
                       } else {
-                        // Desktop: camera warmup — reveal when camera settles back at default
-                        useChannelStore.setState({ animationPlaying: true })
-                        if (ctrl) {
-                          ctrl.smoothTime = 0.7
-                          ctrl.setLookAt(
-                            TV_CLOSE_UP.position.x, TV_CLOSE_UP.position.y, TV_CLOSE_UP.position.z,
-                            TV_CLOSE_UP.target.x, TV_CLOSE_UP.target.y, TV_CLOSE_UP.target.z,
-                            true
-                          )
+                        // Desktop: same as mobile — play animation once behind overlay,
+                        // then replay visibly after reveal
+                        onAnimEndCallbackRef.current = () => {
+                          useChannelStore.setState({ animationPlaying: false })
+                          setOverlayFading(true)
                           setTimeout(() => {
-                            ctrl.setLookAt(
-                              HARDCODED_DEFAULT.position.x, HARDCODED_DEFAULT.position.y, HARDCODED_DEFAULT.position.z,
-                              HARDCODED_DEFAULT.target.x, HARDCODED_DEFAULT.target.y, HARDCODED_DEFAULT.target.z,
-                              true
-                            )
-                            const onRest = () => {
-                              ctrl.removeEventListener('rest', onRest)
-                              ctrl.smoothTime = 0.25
-                              useChannelStore.setState({ animationPlaying: false })
-                              setOverlayFading(true)
-                              setTimeout(() => setLoaded(true), 700)
-                            }
-                            ctrl.addEventListener('rest', onRest)
-                          }, 1500)
+                            setLoaded(true)
+                            setTimeout(() => useChannelStore.setState({ animationPlaying: true }), 100)
+                          }, 700)
                         }
+                        useChannelStore.setState({ animationPlaying: true })
                       }
                     })
                   })
@@ -864,6 +850,24 @@ function App() {
 
       {loaded && panelVisible && (
         <CameraPanel controlsRef={controlsRef} onGoTo={goToView} fpsRef={fpsRef} logRef={logRef} />
+      )}
+
+      {animDone && !isMobile() && (
+        <aside
+          className={`sticky-note${stickyFalling ? ' falling' : ''}`}
+          onClick={(e) => { e.stopPropagation(); setStickyFalling(true) }}
+          onAnimationEnd={(e) => { if (e.animationName === 'fall-off') setAnimDone(false) }}
+        >
+          <p className="sticky-title">KEYBOARD CONTROLS</p>
+          <table>
+            <tbody>
+              <tr><td><span className="key">O</span></td><td>TV On / Off</td></tr>
+              <tr><td><span className="key">M</span></td><td>Mute</td></tr>
+              <tr><td><span className="key">+</span></td><td>Volume Up</td></tr>
+              <tr><td><span className="key">−</span></td><td>Volume Down</td></tr>
+            </tbody>
+          </table>
+        </aside>
       )}
 
       {!loaded && (
