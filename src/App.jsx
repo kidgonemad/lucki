@@ -114,9 +114,21 @@ function curlAt(t) {
 // The viewer is a static site on its own domain, embedded in an iframe on the
 // store's /pages/tv, so it can't know the shop's URL at build time. It reads
 // it off the referrer instead: Shopify's default referrer policy trims a
-// cross-origin referrer to the bare origin, which is the shop's front page —
-// exactly what's wanted. ?home=<url> overrides that when the referrer is
-// stripped or the viewer is opened on its own.
+// cross-origin referrer to the bare origin. ?home=<url> overrides the whole
+// thing when the referrer is stripped or the viewer is opened on its own.
+//
+// Not the bare origin, though. The store's own theme has this in its layout:
+//
+//   {% if template == 'index' %}
+//     <script>window.location.replace('/pages/shop');</script>
+//   {% endif %}
+//
+// and its index template is empty. So / is not a page, it's a redirect stub:
+// it paints the header against nothing and then bounces. Landing there gave a
+// blank white page with a half-cut nav across it for as long as the bounce
+// took. The shop is the page, so go to the page.
+const STORE_PATH = '/pages/shop'
+
 function storeHomeUrl() {
   const override = new URLSearchParams(window.location.search).get('home')
   if (override) {
@@ -129,7 +141,7 @@ function storeHomeUrl() {
   if (document.referrer) {
     try {
       const ref = new URL(document.referrer)
-      if (ref.origin !== window.location.origin) return ref.origin + '/'
+      if (ref.origin !== window.location.origin) return ref.origin + STORE_PATH
     } catch {
       /* fall through */
     }
