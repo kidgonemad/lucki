@@ -28,25 +28,84 @@ const BTN_H = 0.045
 
 const glyphCache = new Map()
 
-function glyphTexture(ch) {
-  if (glyphCache.has(ch)) return glyphCache.get(ch)
+// Power and mute are drawn as paths rather than characters: the IEC power
+// symbol and a crossed speaker are not reliably present in system fonts, and
+// a missing glyph paints a tofu box on the button.
+function drawPower(c, S, color) {
+  const cx = S / 2
+  const cy = S / 2
+  const r = S * 0.25
+  c.strokeStyle = color
+  c.lineWidth = S * 0.085
+  c.lineCap = 'round'
+  // Ring with a gap at the top.
+  c.beginPath()
+  c.arc(cx, cy, r, -Math.PI / 2 + 0.6, -Math.PI / 2 - 0.6 + Math.PI * 2)
+  c.stroke()
+  // The stem through the gap.
+  c.beginPath()
+  c.moveTo(cx, cy - r * 1.3)
+  c.lineTo(cx, cy - r * 0.1)
+  c.stroke()
+}
+
+function drawMute(c, S, color) {
+  const cx = S / 2
+  const cy = S / 2
+  c.fillStyle = color
+  c.strokeStyle = color
+  // Speaker: back plate into a cone.
+  c.beginPath()
+  c.moveTo(cx - S * 0.26, cy - S * 0.09)
+  c.lineTo(cx - S * 0.15, cy - S * 0.09)
+  c.lineTo(cx - S * 0.01, cy - S * 0.22)
+  c.lineTo(cx - S * 0.01, cy + S * 0.22)
+  c.lineTo(cx - S * 0.15, cy + S * 0.09)
+  c.lineTo(cx - S * 0.26, cy + S * 0.09)
+  c.closePath()
+  c.fill()
+  // An x beside it. A single slash reads as a flag at button size; two
+  // crossed strokes are unambiguous.
+  c.lineWidth = S * 0.07
+  c.lineCap = 'round'
+  const ox = cx + S * 0.19
+  const d = S * 0.11
+  c.beginPath()
+  c.moveTo(ox - d, cy - d)
+  c.lineTo(ox + d, cy + d)
+  c.moveTo(ox + d, cy - d)
+  c.lineTo(ox - d, cy + d)
+  c.stroke()
+}
+
+function glyphTexture(ch, color = 'rgba(16,16,16,0.9)') {
+  const key = `${ch}|${color}`
+  if (glyphCache.has(key)) return glyphCache.get(key)
   const S = 128
   const cv = document.createElement('canvas')
   cv.width = S
   cv.height = S
   const c = cv.getContext('2d')
   c.clearRect(0, 0, S, S)
-  c.fillStyle = 'rgba(16,16,16,0.9)'
-  c.font = `700 ${ch === '+' || ch === '−' ? 92 : 74}px "Helvetica Neue", Helvetica, Arial, sans-serif`
-  c.textAlign = 'center'
-  c.textBaseline = 'middle'
-  c.fillText(ch, S / 2, S / 2 + 4)
+
+  if (ch === 'power') {
+    drawPower(c, S, color)
+  } else if (ch === 'mute') {
+    drawMute(c, S, color)
+  } else {
+    c.fillStyle = color
+    c.font = `700 ${ch === '+' || ch === '−' ? 92 : 74}px "Helvetica Neue", Helvetica, Arial, sans-serif`
+    c.textAlign = 'center'
+    c.textBaseline = 'middle'
+    c.fillText(ch, S / 2, S / 2 + 4)
+  }
+
   const t = new CanvasTexture(cv)
   t.colorSpace = SRGBColorSpace
   t.minFilter = LinearFilter
   t.magFilter = LinearFilter
   t.anisotropy = 4
-  glyphCache.set(ch, t)
+  glyphCache.set(key, t)
   return t
 }
 
@@ -72,21 +131,30 @@ function usePress(onPress) {
   return [pressed ? PRESS_DEPTH : 0, down, !!onPress]
 }
 
-function RoundButton({ position, r = 0.075, mat = RUBBER, onPress }) {
+function RoundButton({ position, r = 0.075, mat = RUBBER, onPress, glyph, glyphColor, glyphSize }) {
   const [sink, down, live] = usePress(onPress)
   const [x, y, z] = position
+  const hover = live
+    ? {
+        onPointerOver: () => (document.body.style.cursor = 'pointer'),
+        onPointerOut: () => (document.body.style.cursor = 'auto'),
+      }
+    : {}
 
   return (
-    <mesh
-      position={[x, y - sink, z]}
-      castShadow
-      onPointerDown={down}
-      onPointerOver={live ? () => (document.body.style.cursor = 'pointer') : undefined}
-      onPointerOut={live ? () => (document.body.style.cursor = 'auto') : undefined}
-    >
-      <cylinderGeometry args={[r, r * 0.92, BTN_H, 20]} />
-      <meshStandardMaterial {...mat} />
-    </mesh>
+    <group position={[x, y - sink, z]}>
+      <mesh castShadow onPointerDown={down} {...hover}>
+        <cylinderGeometry args={[r, r * 0.92, BTN_H, 20]} />
+        <meshStandardMaterial {...mat} />
+      </mesh>
+
+      {glyph && (
+        <mesh position={[0, BTN_H / 2 + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+          <planeGeometry args={[glyphSize ?? r * 1.9, glyphSize ?? r * 1.9]} />
+          <meshBasicMaterial map={glyphTexture(glyph, glyphColor)} transparent depthWrite={false} />
+        </mesh>
+      )}
+    </group>
   )
 }
 
@@ -251,7 +319,14 @@ export default function Remote(props) {
       </mesh>
 
       {/* Power, top-left; the one red button on the whole thing */}
-      <RoundButton position={[-0.22, FACE_Y, -0.92]} r={0.082} mat={POWER} onPress={togglePower} />
+      <RoundButton
+        position={[-0.22, FACE_Y, -0.92]}
+        r={0.082}
+        mat={POWER}
+        onPress={togglePower}
+        glyph="power"
+        glyphColor="rgba(255,232,228,0.95)"
+      />
 
       {/* Mute, top-right */}
       <RoundButton
@@ -259,6 +334,8 @@ export default function Remote(props) {
         r={0.072}
         mat={RUBBER_LIGHT}
         onPress={whenOn(toggleMute)}
+        glyph="mute"
+        glyphColor="rgba(18,18,18,0.92)"
       />
 
       {/* Channel rocker (left) and volume rocker (right) — two pills each,
