@@ -613,10 +613,12 @@
 }
 
 /* Way back to the store, top left.
-   An arrow and nothing else — no plate, no fill, no border. The scene behind
-   it is white, so the arrow is black. Padding is the only thing that isn't
-   visible: a bare arrow is not a thumb-sized target, and this is. It sits
-   below the loading overlay (z 100) so it arrives with the scene. */
+   A black disc with the arrow knocked out of it. No border, no box, no
+   label — the mark is the whole control, and it reads against the white
+   scene or anything darker that ends up behind it. Padding is the only
+   thing that isn't visible: it carries the target past the disc to a size
+   a thumb wants. Below the loading overlay (z 100), so it arrives with the
+   scene. */
 .tv-exit {
 	position: fixed;
 	top: calc(env(safe-area-inset-top, 0px) + 6px);
@@ -636,8 +638,8 @@
 
 .tv-exit svg {
 	display: block;
-	width: 26px;
-	height: 26px;
+	width: 32px;
+	height: 32px;
 }
 
 .tv-exit:hover,
@@ -651,8 +653,8 @@
 	}
 
 	.tv-exit svg {
-		width: 28px;
-		height: 28px;
+		width: 36px;
+		height: 36px;
 	}
 }
 

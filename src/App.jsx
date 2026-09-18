@@ -823,17 +823,13 @@ function App() {
   return (
     <div id="canvas-container" onClick={handleBackgroundClick}>
       <button type="button" className="tv-exit" onClick={handleExit} aria-label="Back to the store">
-        {/* Drawn rather than typed: the &larr; glyph is a hairline at any
-            size, and its weight is whatever the system font decides. */}
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path
-            d="M21 12H4M10.5 5.5 4 12l6.5 6.5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+        {/* A solid disc with the arrow knocked out of it. Drawn rather than
+            typed: the &larr; glyph is a hairline whose weight is whatever the
+            system font decides, and a filled mark holds up against whatever
+            the scene puts behind it. */}
+        <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+          <circle cx="24" cy="24" r="24" fill="currentColor" />
+          <path d="M8 24 22 10v9.5h18v9H22V38z" fill="#fff" />
         </svg>
       </button>
 
