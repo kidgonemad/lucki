@@ -646,11 +646,39 @@
 	opacity: 0.78;
 }
 
-/* Pressed, and then held there while the store loads. Just the sink — no
-   colour laid over the face. */
-.tv-exit:active svg,
-.tv-exit.is-leaving svg {
+/* Pressed: the sink, before it comes away. */
+.tv-exit:active svg {
 	transform: scale(0.9);
+}
+
+/* Clicked: it peels off like a sticker. Hinged at the bottom left, the
+   opposite corner lifts toward you and the shadow grows underneath as it
+   comes away from the page, then the whole thing tips off and drops. The
+   navigation waits for it — see PEEL_MS in App.jsx. */
+@keyframes sticker-peel {
+	0% {
+		transform: perspective(340px) rotate3d(1, -1, 0, 0deg) translate(0, 0) rotate(0deg) scale(1);
+		filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0));
+	}
+	22% {
+		transform: perspective(340px) rotate3d(1, -1, 0, 26deg) translate(0, -2px) rotate(-2deg) scale(1.03);
+		filter: drop-shadow(4px 5px 4px rgba(0, 0, 0, 0.3));
+	}
+	50% {
+		transform: perspective(340px) rotate3d(1, -1, 0, 44deg) translate(3px, 1px) rotate(-7deg) scale(1.02);
+		filter: drop-shadow(8px 10px 7px rgba(0, 0, 0, 0.32));
+		opacity: 1;
+	}
+	100% {
+		transform: perspective(340px) rotate3d(1, -1, 0, 58deg) translate(26px, 54px) rotate(-30deg) scale(0.72);
+		filter: drop-shadow(10px 14px 9px rgba(0, 0, 0, 0.14));
+		opacity: 0;
+	}
+}
+
+.tv-exit.is-leaving svg {
+	transform-origin: 16% 84%;
+	animation: sticker-peel 560ms cubic-bezier(0.4, 0, 0.7, 1) forwards;
 }
 
 .tv-exit:active,
@@ -673,5 +701,10 @@
 	.tv-exit,
 	.tv-exit svg {
 		transition: none;
+	}
+
+	.tv-exit.is-leaving svg {
+		animation: none;
+		opacity: 0;
 	}
 }

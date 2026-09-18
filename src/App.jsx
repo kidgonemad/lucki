@@ -47,6 +47,11 @@ function isMobile() {
   return window.innerWidth / window.innerHeight < 1
 }
 
+// How long to let the sticker peel run before the store is asked for. A shade
+// under the animation in App.css, so the page turns over while the face is
+// still in the air.
+const PEEL_MS = 460
+
 // Where the exit button goes.
 //
 // The viewer is a static site on its own domain, embedded in an iframe on the
@@ -799,15 +804,20 @@ function App() {
   // Sits over the canvas, so its click would otherwise bubble to
   // handleBackgroundClick and yank the camera on the way out.
   //
-  // The press latches orange rather than only flashing on :active. Leaving is
-  // a navigation: the page stays put for as long as the store takes to
-  // answer, and without the latch the mark would snap back to black and read
-  // as a tap that did nothing.
+  // The face peels off like a sticker, and the navigation waits for it —
+  // otherwise the store answers first on a quick connection and the peel is
+  // never seen. Slightly under the animation, so the new page takes over
+  // while it is still coming away rather than after it has gone.
   const [leaving, setLeaving] = useState(false)
+  const leavingRef = useRef(false)
   const handleExit = useCallback((ev) => {
     ev.stopPropagation()
+    if (leavingRef.current) return // a second tap mid-peel is not a second exit
+    leavingRef.current = true
     setLeaving(true)
-    leaveForStore()
+
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    setTimeout(leaveForStore, still ? 0 : PEEL_MS)
   }, [])
 
   // Mobile: native DOM click for iOS audio unlock (no DeviceMotion needed)
