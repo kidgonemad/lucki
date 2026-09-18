@@ -26,6 +26,30 @@ const EMITTER = { color: '#3a2a12', roughness: 0.35, metalness: 0.1 }
 const FACE_Y = BODY.h / 2
 const BTN_H = 0.045
 
+const glyphCache = new Map()
+
+function glyphTexture(ch) {
+  if (glyphCache.has(ch)) return glyphCache.get(ch)
+  const S = 128
+  const cv = document.createElement('canvas')
+  cv.width = S
+  cv.height = S
+  const c = cv.getContext('2d')
+  c.clearRect(0, 0, S, S)
+  c.fillStyle = 'rgba(16,16,16,0.9)'
+  c.font = `700 ${ch === '+' || ch === '−' ? 92 : 74}px "Helvetica Neue", Helvetica, Arial, sans-serif`
+  c.textAlign = 'center'
+  c.textBaseline = 'middle'
+  c.fillText(ch, S / 2, S / 2 + 4)
+  const t = new CanvasTexture(cv)
+  t.colorSpace = SRGBColorSpace
+  t.minFilter = LinearFilter
+  t.magFilter = LinearFilter
+  t.anisotropy = 4
+  glyphCache.set(ch, t)
+  return t
+}
+
 const PRESS_DEPTH = 0.022
 const PRESS_MS = 130
 
@@ -66,23 +90,38 @@ function RoundButton({ position, r = 0.075, mat = RUBBER, onPress }) {
   )
 }
 
-function PillButton({ position, w = 0.2, l = 0.12, mat = RUBBER, onPress }) {
+function PillButton({ position, w = 0.2, l = 0.12, mat = RUBBER, onPress, glyph }) {
   const [sink, down, live] = usePress(onPress)
   const [x, y, z] = position
+  const hover = live
+    ? {
+        onPointerOver: () => (document.body.style.cursor = 'pointer'),
+        onPointerOut: () => (document.body.style.cursor = 'auto'),
+      }
+    : {}
 
   return (
-    <RoundedBox
-      args={[w, BTN_H, l]}
-      radius={BTN_H * 0.45}
-      smoothness={3}
-      position={[x, y - sink, z]}
-      castShadow
-      onPointerDown={down}
-      onPointerOver={live ? () => (document.body.style.cursor = 'pointer') : undefined}
-      onPointerOut={live ? () => (document.body.style.cursor = 'auto') : undefined}
-    >
-      <meshStandardMaterial {...mat} />
-    </RoundedBox>
+    <group position={[x, y - sink, z]}>
+      <RoundedBox
+        args={[w, BTN_H, l]}
+        radius={BTN_H * 0.45}
+        smoothness={3}
+        castShadow
+        onPointerDown={down}
+        {...hover}
+      >
+        <meshStandardMaterial {...mat} />
+      </RoundedBox>
+
+      {/* Printed on the button top rather than the shell, so it rides down
+          with the press instead of being occluded by the button. */}
+      {glyph && (
+        <mesh position={[0, BTN_H / 2 + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+          <planeGeometry args={[0.1, 0.1]} />
+          <meshBasicMaterial map={glyphTexture(glyph)} transparent depthWrite={false} />
+        </mesh>
+      )}
+    </group>
   )
 }
 
@@ -224,10 +263,10 @@ export default function Remote(props) {
 
       {/* Channel rocker (left) and volume rocker (right) — two pills each,
           split by a thin gap so they read as a single rocker switch. */}
-      <PillButton position={[-0.21, FACE_Y, -0.62]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(nextChannel)} />
-      <PillButton position={[-0.21, FACE_Y, -0.46]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(prevChannel)} />
-      <PillButton position={[0.21, FACE_Y, -0.62]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(volumeUp)} />
-      <PillButton position={[0.21, FACE_Y, -0.46]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(volumeDown)} />
+      <PillButton position={[-0.21, FACE_Y, -0.62]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(nextChannel)} glyph="▲" />
+      <PillButton position={[-0.21, FACE_Y, -0.46]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(prevChannel)} glyph="▼" />
+      <PillButton position={[0.21, FACE_Y, -0.62]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(volumeUp)} glyph="+" />
+      <PillButton position={[0.21, FACE_Y, -0.46]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(volumeDown)} glyph="−" />
 
       {/* Number pad */}
       {keypad.map(({ x, z, key, label }) => (
