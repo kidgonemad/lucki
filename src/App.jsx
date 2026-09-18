@@ -839,14 +839,20 @@ function App() {
         onClick={handleExit}
         aria-label="Back to the store"
       >
-        {/* Cut to a circle with a transparent surround, so none of the
-            original's black background shows against the white scene. */}
-        <img
-          src={`${import.meta.env.BASE_URL}tv-ui-assets/img/back-face.webp`}
-          alt=""
-          decoding="async"
-          draggable="false"
-        />
+        {/* The face itself, cut to a circle with a transparent surround so
+            none of the original's black background shows against the white
+            scene. Carried in an <svg> on a 1:1 viewBox rather than a bare
+            <img>: the box is square whatever the CSS around it says, and the
+            art is laid on its own pixel grid. */}
+        <svg viewBox="0 0 160 160" aria-hidden="true" focusable="false">
+          <image
+            href={`${import.meta.env.BASE_URL}tv-ui-assets/img/back-face.webp`}
+            x="0"
+            y="0"
+            width="160"
+            height="160"
+          />
+        </svg>
       </button>
 
       <Canvas

@@ -624,7 +624,7 @@
 	left: calc(env(safe-area-inset-left, 0px) + 8px);
 	z-index: 20;
 	display: block;
-	padding: 10px 12px;
+	padding: 12px;
 	border: none;
 	background: none;
 	-webkit-appearance: none;
@@ -634,7 +634,7 @@
 	transition: opacity 0.2s ease;
 }
 
-.tv-exit img {
+.tv-exit svg {
 	display: block;
 	width: 40px;
 	height: 40px;
@@ -650,8 +650,8 @@
    recoloured the way the old drawn arrow could, so the press reads as a
    press the other way round: it sinks, and it takes on the store's own
    orange (#e54d29) as a glow around it. */
-.tv-exit:active img,
-.tv-exit.is-leaving img {
+.tv-exit:active svg,
+.tv-exit.is-leaving svg {
 	transform: scale(0.9);
 	filter: drop-shadow(0 0 8px #e54d29) drop-shadow(0 0 3px #e54d29);
 }
@@ -663,10 +663,10 @@
 
 @media (max-width: 749px) {
 	.tv-exit {
-		padding: 12px 14px;
+		padding: 14px;
 	}
 
-	.tv-exit img {
+	.tv-exit svg {
 		width: 46px;
 		height: 46px;
 	}
@@ -674,7 +674,7 @@
 
 @media (prefers-reduced-motion: reduce) {
 	.tv-exit,
-	.tv-exit img {
+	.tv-exit svg {
 		transition: none;
 	}
 }
