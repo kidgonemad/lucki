@@ -113,14 +113,54 @@ function glyphTexture(ch, color = 'rgba(255,255,255,0.95)') {
 const PRESS_DEPTH = 0.022
 const PRESS_MS = 130
 
+// The moulded buttons are small: at the size the remote is drawn on a phone
+// the keypad keys are about 20px across, well under the ~44px a thumb wants,
+// and the remote drifts as it is held. So nothing on the face is hit directly.
+// Every button carries an invisible slab instead, sized to the button's slot
+// on the face, and the buttons you can see don't raycast at all. The slabs
+// tile: a tap that lands between two keys hits the nearer one rather than
+// falling through to the scene behind.
+const HIT_DEPTH = 0.18
+
+// [width, length] of each button's hit area, in local units. Sized to the
+// space around the button so neighbours never overlap — overlapping slabs
+// would make which one you hit a matter of viewing angle. At the size the
+// remote is drawn on a 390x844 phone one unit is roughly 140px, so these come
+// out around 39px for power and mute, 42x22px for a rocker half, and 28x34px
+// for a keypad key — against 23px and 19px for the mouldings themselves.
+const HIT = {
+  power: [0.28, 0.28],
+  rocker: [0.30, 0.155],
+  key: [0.20, 0.24],
+}
+
+// A press fires on pointerdown, but the browser sends a click afterwards and
+// that is a separate event — stopping the first does nothing to the second.
+// Both have to be stopped by hand, or the press reaches the DOM click handler
+// on the canvas container as well as the button.
+const swallow = (e) => e.nativeEvent?.stopPropagation()
+
+function HitArea({ size, onPointerDown, ...rest }) {
+  return (
+    <mesh position={[0, HIT_DEPTH / 4, 0]} onPointerDown={onPointerDown} onClick={swallow} {...rest}>
+      <boxGeometry args={[size[0], HIT_DEPTH, size[1]]} />
+      <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
+    </mesh>
+  )
+}
+
 // Shared press behaviour: sink the button, fire the action, pop back.
 function usePress(onPress) {
   const [pressed, setPressed] = useState(false)
 
   const down = useCallback(
     (e) => {
-      // Keep the tap off the camera controls underneath.
+      // Keep the tap off the camera controls underneath. R3F's own
+      // stopPropagation only stops other objects in the scene; the native
+      // event has to be stopped separately. See swallow() for the click that
+      // follows this.
       e.stopPropagation()
+      e.nativeEvent?.stopPropagation()
       if (!onPress) return
       setPressed(true)
       playClick()
@@ -133,7 +173,7 @@ function usePress(onPress) {
   return [pressed ? PRESS_DEPTH : 0, down, !!onPress]
 }
 
-function RoundButton({ position, r = 0.075, mat = RUBBER, onPress, glyph, glyphColor, glyphSize }) {
+function RoundButton({ position, r = 0.075, hit, mat = RUBBER, onPress, glyph, glyphColor, glyphSize }) {
   const [sink, down, live] = usePress(onPress)
   const [x, y, z] = position
   const hover = live
@@ -145,7 +185,9 @@ function RoundButton({ position, r = 0.075, mat = RUBBER, onPress, glyph, glyphC
 
   return (
     <group position={[x, y - sink, z]}>
-      <mesh castShadow onPointerDown={down} {...hover}>
+      <HitArea size={hit ?? [r * 3, r * 3]} onPointerDown={down} {...hover} />
+
+      <mesh castShadow raycast={() => null}>
         <cylinderGeometry args={[r, r * 0.92, BTN_H, 20]} />
         <meshStandardMaterial {...mat} />
       </mesh>
@@ -160,7 +202,7 @@ function RoundButton({ position, r = 0.075, mat = RUBBER, onPress, glyph, glyphC
   )
 }
 
-function PillButton({ position, w = 0.2, l = 0.12, mat = RUBBER, onPress, glyph }) {
+function PillButton({ position, w = 0.2, l = 0.12, hit, mat = RUBBER, onPress, glyph }) {
   const [sink, down, live] = usePress(onPress)
   const [x, y, z] = position
   const hover = live
@@ -172,13 +214,14 @@ function PillButton({ position, w = 0.2, l = 0.12, mat = RUBBER, onPress, glyph 
 
   return (
     <group position={[x, y - sink, z]}>
+      <HitArea size={hit ?? [w * 1.2, l * 1.25]} onPointerDown={down} {...hover} />
+
       <RoundedBox
         args={[w, BTN_H, l]}
         radius={BTN_H * 0.45}
         smoothness={3}
         castShadow
-        onPointerDown={down}
-        {...hover}
+        raycast={() => null}
       >
         <meshStandardMaterial {...mat} />
       </RoundedBox>
@@ -317,10 +360,13 @@ export default function Remote(props) {
         <meshStandardMaterial {...EMITTER} />
       </mesh>
 
-      {/* Power, top-left; the one red button on the whole thing */}
+      {/* Power, top-left; the one red button on the whole thing.
+          Nothing sits near it, so its hit area is the most generous on the
+          face — it's the button someone reaches for first. */}
       <RoundButton
         position={[-0.22, FACE_Y, -0.92]}
         r={0.082}
+        hit={HIT.power}
         mat={POWER}
         onPress={togglePower}
         glyph="power"
@@ -331,24 +377,27 @@ export default function Remote(props) {
       <RoundButton
         position={[0.22, FACE_Y, -0.92]}
         r={0.072}
+        hit={HIT.power}
         mat={RUBBER_LIGHT}
         onPress={whenOn(toggleMute)}
         glyph="mute"
       />
 
       {/* Channel rocker (left) and volume rocker (right) — two pills each,
-          split by a thin gap so they read as a single rocker switch. */}
-      <PillButton position={[-0.21, FACE_Y, -0.62]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(nextChannel)} glyph="▲" />
-      <PillButton position={[-0.21, FACE_Y, -0.46]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(prevChannel)} glyph="▼" />
-      <PillButton position={[0.21, FACE_Y, -0.62]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(volumeUp)} glyph="+" />
-      <PillButton position={[0.21, FACE_Y, -0.46]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(volumeDown)} glyph="−" />
+          split by a thin gap so they read as a single rocker switch. The hit
+          areas meet in that gap: up and down, never neither. */}
+      <PillButton position={[-0.21, FACE_Y, -0.62]} w={0.26} l={0.13} hit={HIT.rocker} mat={RUBBER_LIGHT} onPress={whenOn(nextChannel)} glyph="▲" />
+      <PillButton position={[-0.21, FACE_Y, -0.46]} w={0.26} l={0.13} hit={HIT.rocker} mat={RUBBER_LIGHT} onPress={whenOn(prevChannel)} glyph="▼" />
+      <PillButton position={[0.21, FACE_Y, -0.62]} w={0.26} l={0.13} hit={HIT.rocker} mat={RUBBER_LIGHT} onPress={whenOn(volumeUp)} glyph="+" />
+      <PillButton position={[0.21, FACE_Y, -0.46]} w={0.26} l={0.13} hit={HIT.rocker} mat={RUBBER_LIGHT} onPress={whenOn(volumeDown)} glyph="−" />
 
-      {/* Number pad */}
+      {/* Number pad. Hit areas fill the grid cell, so the pad has no gaps. */}
       {keypad.map(({ x, z, key, label }) => (
         <RoundButton
           key={key}
           position={[x, FACE_Y, z]}
           r={0.068}
+          hit={HIT.key}
           onPress={pressDigit(label)}
           glyph={label}
           glyphSize={0.105}

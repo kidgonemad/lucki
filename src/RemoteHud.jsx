@@ -25,12 +25,18 @@ const REST_TILT_Z = -0.1
 
 // Idle motion, in local units. Unrelated frequencies so the loop never reads
 // as a loop — a hand doesn't oscillate on a metronome.
+//
+// Amplitudes are half what they were. At the old figures a button wandered up
+// to 21px across the screen and 25px down it over a few seconds — further
+// than a keypad key is wide, so a button you aimed at had moved by the time
+// your thumb landed. Halved, the hand still reads as a hand and the excursion
+// lands inside the hit areas in Remote.jsx.
 const DRIFT = {
-  y: { amp: 0.012, hz: 0.27 },
-  x: { amp: 0.007, hz: 0.19 },
-  rotZ: { amp: 0.045, hz: 0.23 },
-  rotX: { amp: 0.035, hz: 0.31 },
-  rotY: { amp: 0.06, hz: 0.13 },
+  y: { amp: 0.006, hz: 0.27 },
+  x: { amp: 0.0035, hz: 0.19 },
+  rotZ: { amp: 0.022, hz: 0.23 },
+  rotX: { amp: 0.018, hz: 0.31 },
+  rotY: { amp: 0.03, hz: 0.13 },
 }
 
 const RISE = 0.5 // how far below its resting spot it starts
