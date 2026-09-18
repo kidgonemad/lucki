@@ -154,11 +154,19 @@ export default function Model({ controlsRef, onGoTo, onReady, onAnimationEnd, ..
     const mobile = window.innerWidth / window.innerHeight < 1
 
     // Helper: ensure video is unmuted before every play on mobile.
-    // Audio unlock happens in handleClick (a real click gesture iOS trusts).
+    // Audio unlock happens on the first real click gesture iOS trusts.
+    //
+    // The store is pushed to match, not just the element: it starts muted at
+    // half volume, and if it stayed that way the remote's mute button would
+    // read as already-muted and its first press would do nothing audible.
     const mobilePlay = () => {
       if (mobile) {
         video.muted = false
         video.volume = 1.0
+        const s = useChannelStore.getState()
+        if (s.isMuted || s.volume !== 1.0) {
+          useChannelStore.setState({ isMuted: false, volume: 1.0 })
+        }
       }
       return video.play()
     }

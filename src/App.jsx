@@ -584,7 +584,6 @@ function App() {
   const [overlayFading, setOverlayFading] = useState(false)
   const [animDone, setAnimDone] = useState(false)
   const [stickyFalling, setStickyFalling] = useState(false)
-  const mobileTapRef = useRef(0) // mobile tap sequence: 0=ready, 1=zoomed in, 2=tv on
   const onAnimEndCallbackRef = useRef(null)
 
   // Called by Model when the animation mixer fires 'finished'
@@ -729,6 +728,20 @@ function App() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [goToView, logEvent])
 
+  // Tapping the scene pulls the camera in on the TV — desktop only.
+  //
+  // Mobile used to run a tap-anywhere sequence here: power on and pull in,
+  // then back out, then power off. The on-screen remote lives in the same
+  // scene and its buttons do raycast, and R3F's stopPropagation only stops
+  // other 3D objects — the native event still bubbled to this div. So every
+  // remote press fired the sequence as well: power turned the set on and
+  // this turned it straight back off, and any button flung the camera. On
+  // mobile the remote owns the TV, and nothing happens off it.
+  const handleBackgroundClick = useCallback(() => {
+    if (isMobile()) return
+    goToView('tv')
+  }, [goToView])
+
   // Mobile: native DOM click for iOS audio unlock (no DeviceMotion needed)
   useEffect(() => {
     if (!isMobile()) return
@@ -747,27 +760,7 @@ function App() {
   }, [])
 
   return (
-    <div id="canvas-container" onClick={() => {
-      if (!isMobile()) {
-        goToView('tv')
-      } else {
-        // Mobile 3-tap sequence (R3F onClick disabled — no raycasting)
-        const tap = mobileTapRef.current
-        if (tap === 0) {
-          useChannelStore.setState({ isMuted: false, volume: 1.0 })
-          useChannelStore.getState().togglePower()
-          goToView('tv')
-          mobileTapRef.current = 1
-        } else if (tap === 1) {
-          goToView('default')
-          mobileTapRef.current = 2
-        } else if (tap === 2) {
-          const s = useChannelStore.getState()
-          if (s.tvOn) s.togglePower()
-          mobileTapRef.current = 0
-        }
-      }
-    }}>
+    <div id="canvas-container" onClick={handleBackgroundClick}>
       <Canvas
         camera={{ position: [12.02, 3.64, -26.01], fov: 45 }}
         shadows={!isMobile()}
