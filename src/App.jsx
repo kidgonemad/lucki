@@ -823,7 +823,18 @@ function App() {
   return (
     <div id="canvas-container" onClick={handleBackgroundClick}>
       <button type="button" className="tv-exit" onClick={handleExit} aria-label="Back to the store">
-        &larr;
+        {/* Drawn rather than typed: the &larr; glyph is a hairline at any
+            size, and its weight is whatever the system font decides. */}
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path
+            d="M21 12H4M10.5 5.5 4 12l6.5 6.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </button>
 
       <Canvas
