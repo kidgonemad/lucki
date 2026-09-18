@@ -10,7 +10,6 @@ import TVUI from './TVUI'
 // Set up Draco decoder for compressed GLB
 const dracoLoader = new DRACOLoader()
 dracoLoader.setDecoderPath(`${import.meta.env.BASE_URL}draco/`)
-const CDN = 'https://pub-48d4141ea8154377b15f818e23442153.r2.dev'
 const GLB_URL = `${import.meta.env.BASE_URL}assets/tv-optimized.glb`
 
 useGLTF.preload(GLB_URL, undefined, undefined, (loader) => {
@@ -213,22 +212,11 @@ export default function Model({ controlsRef, onGoTo, onReady, onAnimationEnd, ..
       }, 400))
     }
 
-    function startIntro() {
+    function powerOn() {
       clearTimers()
       crtMat.power = 0
       powerTargetRef.current = 1
-      crtMat.color.setScalar(1.0)
-      crtMat.emissiveIntensity = 0.5
-      crtMat.noSignal = 1.0
-      crtMat.staticAmount = 0.04
-      setScreenTexture(videoTexture, true)
-      useChannelStore.getState().setPhase('intro')
-      video.loop = false
-      video.src = `${CDN}/intro.mov`
-      video.load()
-      mobilePlay().catch(() => {
-        if (mounted) enterChannelsMode()
-      })
+      enterChannelsMode()
     }
 
     function enterChannelsMode() {
@@ -260,39 +248,9 @@ export default function Model({ controlsRef, onGoTo, onReady, onAnimationEnd, ..
     }
 
     // --- Video events ---
-    function playClip(src, phaseName) {
-      useChannelStore.getState().setPhase(phaseName)
-      crtMat.color.setScalar(0.35)
-      crtMat.emissiveIntensity = 0.15
-      crtMat.staticAmount = 0.04
-      crtMat.noSignal = 1.0
-      video.src = src
-      video.load()
-      mobilePlay().then(() => {
-        if (!mounted) return
-        crtMat.noSignal = 0.0
-      }).catch(() => { if (mounted) enterChannelsMode() })
-    }
-
-    function glitchThen(cb) {
-      crtMat.noSignal = 1.0
-      crtMat.staticAmount = 0.5
-      timers.push(setTimeout(() => { if (mounted) cb() }, 600))
-    }
-
     const onEnded = () => {
       if (!mounted) return
-      const phase = useChannelStore.getState().phase
-      if (phase === 'intro') {
-        useChannelStore.getState().setPhase('glitch')
-        glitchThen(() => playClip(`${CDN}/orangeclip1.mp4`, 'orange-1'))
-      } else if (phase === 'orange-1') {
-        useChannelStore.getState().setPhase('glitch')
-        glitchThen(() => playClip(`${CDN}/orangeclip2.mp4`, 'orange-2'))
-      } else if (phase === 'orange-2') {
-        useChannelStore.getState().setPhase('glitch')
-        glitchThen(() => enterChannelsMode())
-      } else if (phase === 'channels') {
+      if (useChannelStore.getState().phase === 'channels') {
         useChannelStore.getState().nextChannel()
       }
     }
@@ -305,16 +263,15 @@ export default function Model({ controlsRef, onGoTo, onReady, onAnimationEnd, ..
 
     const onPlaying = () => {
       if (!mounted) return
-      if (useChannelStore.getState().phase === 'intro') {
-        crtMat.noSignal = 0.0
-      }
+      crtMat.noSignal = 0.0
       useChannelStore.setState({ buffering: false })
     }
 
     const onError = () => {
       if (!mounted) return
-      if (useChannelStore.getState().phase === 'intro') {
-        enterChannelsMode()
+      if (useChannelStore.getState().phase === 'channels') {
+        crtMat.noSignal = 1.0
+        useChannelStore.setState({ noSignal: true, buffering: false })
       }
     }
 
@@ -332,7 +289,7 @@ export default function Model({ controlsRef, onGoTo, onReady, onAnimationEnd, ..
 
       // Power toggle
       if (s.tvOn !== prev.tvOn) {
-        if (s.tvOn) startIntro()
+        if (s.tvOn) powerOn()
         else turnOff()
         return
       }

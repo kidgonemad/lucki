@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 const useChannelStore = create((set, get) => ({
   // TV power + phase
-  phase: 'off', // 'off' | 'intro' | 'glitch' | 'drb-logos' | 'drb-psa' | 'channels'
+  phase: 'off', // 'off' | 'channels'
   setPhase: (phase) => set({ phase }),
   tvOn: false,
   togglePower: () => set((s) => ({ tvOn: !s.tvOn })),
@@ -10,9 +10,11 @@ const useChannelStore = create((set, get) => ({
   // Channel state
   currentChannel: 1,
   channels: {
-    1: `${import.meta.env.BASE_URL}videos/ch1.mp4`,
-    2: `${import.meta.env.BASE_URL}videos/ch2.mp4`,
-    3: `${import.meta.env.BASE_URL}videos/ch3.mp4`,
+    1: `${import.meta.env.BASE_URL}videos/ch1.mp4`, // No Such Thing As Junkie Paradise
+    2: `${import.meta.env.BASE_URL}videos/ch2.mp4`, // BRAZY 4 LUCKI
+    3: `${import.meta.env.BASE_URL}videos/ch3.mp4`, // Meet Me @ Viper Room
+    4: `${import.meta.env.BASE_URL}videos/ch4.mp4`, // BAM 4 BAD
+    5: `${import.meta.env.BASE_URL}videos/ch5.mp4`, // Hard Thinker
   },
   noSignal: false,
   buffering: false,
