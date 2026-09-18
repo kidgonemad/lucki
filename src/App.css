@@ -651,39 +651,24 @@
 	transform: scale(0.9);
 }
 
-/* Clicked: it peels off like a sticker. Hinged at the bottom left, the
-   opposite corner lifts toward you and the shadow grows underneath as it
-   comes away from the page, then the whole thing tips off and drops. The
-   navigation waits for it — see PEEL_MS in App.jsx. */
-@keyframes sticker-peel {
-	0% {
-		transform: perspective(340px) rotate3d(1, -1, 0, 0deg) translate(0, 0) rotate(0deg) scale(1);
-		filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0));
-	}
-	22% {
-		transform: perspective(340px) rotate3d(1, -1, 0, 26deg) translate(0, -2px) rotate(-2deg) scale(1.03);
-		filter: drop-shadow(4px 5px 4px rgba(0, 0, 0, 0.3));
-	}
-	50% {
-		transform: perspective(340px) rotate3d(1, -1, 0, 44deg) translate(3px, 1px) rotate(-7deg) scale(1.02);
-		filter: drop-shadow(8px 10px 7px rgba(0, 0, 0, 0.32));
-		opacity: 1;
-	}
-	100% {
-		transform: perspective(340px) rotate3d(1, -1, 0, 58deg) translate(26px, 54px) rotate(-30deg) scale(0.72);
-		filter: drop-shadow(10px 14px 9px rgba(0, 0, 0, 0.14));
-		opacity: 0;
-	}
+/* The peel itself is geometry, not CSS — see runPeel in App.jsx. What happens
+   here: the folded-back flap stays hidden until the peel runs, and the button
+   stops taking clicks once it has. */
+.tv-exit .tv-exit-flap {
+	visibility: hidden;
+}
+
+.tv-exit.is-leaving .tv-exit-flap {
+	visibility: visible;
+}
+
+.tv-exit.is-leaving {
+	opacity: 1;
+	pointer-events: none;
 }
 
 .tv-exit.is-leaving svg {
-	transform-origin: 16% 84%;
-	animation: sticker-peel 560ms cubic-bezier(0.4, 0, 0.7, 1) forwards;
-}
-
-.tv-exit:active,
-.tv-exit.is-leaving {
-	opacity: 1;
+	transform: none;
 }
 
 @media (max-width: 749px) {
@@ -704,7 +689,6 @@
 	}
 
 	.tv-exit.is-leaving svg {
-		animation: none;
 		opacity: 0;
 	}
 }

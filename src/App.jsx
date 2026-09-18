@@ -47,10 +47,36 @@ function isMobile() {
   return window.innerWidth / window.innerHeight < 1
 }
 
-// How long to let the sticker peel run before the store is asked for. A shade
-// under the animation in App.css, so the page turns over while the face is
-// still in the air.
-const PEEL_MS = 460
+// The peel.
+//
+// A sticker doesn't tip off a surface in one piece — a fold line travels
+// across it, the part behind the line curls back on itself showing its paper
+// backing, and the part ahead of it is still stuck down flat. That's what this
+// draws, as real geometry rather than a tilt.
+//
+// Everything happens in a frame rotated by PEEL_ANGLE, so the fold line is
+// just a vertical line at x = t sweeping from 0 to 160 and the maths stays
+// simple. Both halves are cut by the same edge, x >= t:
+//
+//   stuck  the face, clipped to x >= t — what hasn't lifted yet
+//   flap   the backing, reflected about x = t, then clipped to x >= t in
+//          that reflected space. Reflection maps the half-plane x < t onto
+//          x > t, so the same clip picks out exactly the peeled part folded
+//          back over the sticker. The circle spans x 0.5..159.5 whatever the
+//          angle, since it's rotated about its own centre, so one sweep of t
+//          from 0 to 160 lifts all of it.
+// At rest the fold starts a little off the near edge rather than exactly on
+// it, so the first frame of the peel already has the fold biting. The flap is
+// hidden outright until the peel runs — parked off the edge its shadow still
+// blurs back across it, and no offset is far enough to be sure of.
+const PEEL_ANGLE = -35
+const PEEL_REST = -10
+const PEEL_SPAN = 160
+const PEEL_MS = 700
+
+// The store is asked for a shade before the fold finishes, so the page turns
+// over on the last of it rather than after a beat of nothing.
+const PEEL_NAV_MS = 600
 
 // Where the exit button goes.
 //
@@ -810,6 +836,30 @@ function App() {
   // while it is still coming away rather than after it has gone.
   const [leaving, setLeaving] = useState(false)
   const leavingRef = useRef(false)
+  const foldRef = useRef(null) // the clip edge both halves are cut by
+  const flapRef = useRef(null) // the folded-back backing
+
+  // Driven by hand rather than by CSS: the fold edge and the reflection have
+  // to move in step, and one of them is an attribute CSS can't animate.
+  // Writing both straight to the DOM also keeps it off React's render path.
+  const runPeel = useCallback(() => {
+    const fold = foldRef.current
+    const flap = flapRef.current
+    if (!fold || !flap) return
+    const t0 = performance.now()
+
+    const frame = (now) => {
+      const p = Math.min(1, (now - t0) / PEEL_MS)
+      // Slow to start, as a thumbnail catches the edge, then away.
+      const eased = p < 0.5 ? 2 * p * p : 1 - (-2 * p + 2) ** 2 / 2
+      const t = PEEL_REST + eased * (PEEL_SPAN - PEEL_REST)
+      fold.setAttribute('x', t)
+      flap.setAttribute('transform', `translate(${2 * t} 0) scale(-1 1)`)
+      if (p < 1) requestAnimationFrame(frame)
+    }
+    requestAnimationFrame(frame)
+  }, [])
+
   const handleExit = useCallback((ev) => {
     ev.stopPropagation()
     if (leavingRef.current) return // a second tap mid-peel is not a second exit
@@ -817,8 +867,13 @@ function App() {
     setLeaving(true)
 
     const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    setTimeout(leaveForStore, still ? 0 : PEEL_MS)
-  }, [])
+    if (still) {
+      leaveForStore()
+      return
+    }
+    runPeel()
+    setTimeout(leaveForStore, PEEL_NAV_MS)
+  }, [runPeel])
 
   // Mobile: native DOM click for iOS audio unlock (no DeviceMotion needed)
   useEffect(() => {
@@ -849,19 +904,54 @@ function App() {
         onClick={handleExit}
         aria-label="Back to the store"
       >
-        {/* The face itself, cut to a circle with a transparent surround so
-            none of the original's black background shows against the white
-            scene. Carried in an <svg> on a 1:1 viewBox rather than a bare
-            <img>: the box is square whatever the CSS around it says, and the
-            art is laid on its own pixel grid. */}
+        {/* The face, cut to a circle with a transparent surround so none of
+            the original's black background shows against the white scene.
+            See PEEL_ANGLE above for how the two halves work. */}
         <svg viewBox="0 0 160 160" aria-hidden="true" focusable="false">
-          <image
-            href={`${import.meta.env.BASE_URL}tv-ui-assets/img/back-face.webp`}
-            x="0"
-            y="0"
-            width="160"
-            height="160"
-          />
+          <defs>
+            {/* The fold edge. x rides from 0 to 160 as it peels. */}
+            <clipPath id="tv-exit-fold">
+              <rect ref={foldRef} x={PEEL_REST} y="-140" width="600" height="440" />
+            </clipPath>
+
+            {/* Sticker paper, lit along the curl: brightest just past the
+                fold where it turns over, falling away toward the loose edge. */}
+            <linearGradient id="tv-exit-backing" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#b9b3a8" />
+              <stop offset="34%" stopColor="#f6f4ef" />
+              <stop offset="72%" stopColor="#ded9d0" />
+              <stop offset="100%" stopColor="#b4aea3" />
+            </linearGradient>
+
+            {/* Cast by the lifted part onto what's still stuck down. */}
+            <filter id="tv-exit-lift" x="-60%" y="-60%" width="220%" height="220%">
+              <feDropShadow dx="2.5" dy="4" stdDeviation="3" floodOpacity="0.38" />
+            </filter>
+          </defs>
+
+          <g transform={`rotate(${PEEL_ANGLE} 80 80)`}>
+            {/* Still stuck down. */}
+            <g clipPath="url(#tv-exit-fold)">
+              <g transform={`rotate(${-PEEL_ANGLE} 80 80)`}>
+                <image
+                  href={`${import.meta.env.BASE_URL}tv-ui-assets/img/back-face.webp`}
+                  x="0"
+                  y="0"
+                  width="160"
+                  height="160"
+                />
+              </g>
+            </g>
+
+            {/* Lifted, folded back on itself, backing side up. */}
+            <g className="tv-exit-flap" filter="url(#tv-exit-lift)">
+              <g ref={flapRef} transform={`translate(${2 * PEEL_REST} 0) scale(-1 1)`}>
+                <g clipPath="url(#tv-exit-fold)">
+                  <circle cx="80" cy="80" r="79.5" fill="url(#tv-exit-backing)" />
+                </g>
+              </g>
+            </g>
+          </g>
         </svg>
       </button>
 
