@@ -839,14 +839,14 @@ function App() {
         onClick={handleExit}
         aria-label="Back to the store"
       >
-        {/* A solid disc with the arrow knocked out of it. Drawn rather than
-            typed: the &larr; glyph is a hairline whose weight is whatever the
-            system font decides, and a filled mark holds up against whatever
-            the scene puts behind it. */}
-        <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-          <circle cx="24" cy="24" r="24" fill="currentColor" />
-          <path d="M8 24 22 10v9.5h18v9H22V38z" fill="#fff" />
-        </svg>
+        {/* Cut to a circle with a transparent surround, so none of the
+            original's black background shows against the white scene. */}
+        <img
+          src={`${import.meta.env.BASE_URL}tv-ui-assets/img/back-face.webp`}
+          alt=""
+          decoding="async"
+          draggable="false"
+        />
       </button>
 
       <Canvas

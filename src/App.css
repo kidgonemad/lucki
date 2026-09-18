@@ -613,62 +613,68 @@
 }
 
 /* Way back to the store, top left.
-   A black disc with the arrow knocked out of it. No border, no box, no
-   label — the mark is the whole control, and it reads against the white
-   scene or anything darker that ends up behind it. Padding is the only
-   thing that isn't visible: it carries the target past the disc to a size
-   a thumb wants. Below the loading overlay (z 100), so it arrives with the
-   scene. */
+   No plate, no box, no label — the mark is the whole control. It is cut to a
+   circle with a transparent surround, so nothing of the original's black
+   background shows against the white scene. Padding is the only thing that
+   isn't visible: it carries the target past the face to a size a thumb wants.
+   Below the loading overlay (z 100), so it arrives with the scene. */
 .tv-exit {
 	position: fixed;
 	top: calc(env(safe-area-inset-top, 0px) + 6px);
 	left: calc(env(safe-area-inset-left, 0px) + 8px);
 	z-index: 20;
 	display: block;
-	padding: 12px 14px;
+	padding: 10px 12px;
 	border: none;
 	background: none;
 	-webkit-appearance: none;
 	appearance: none;
-	color: #000;
 	cursor: pointer;
 	-webkit-tap-highlight-color: transparent;
-	transition: opacity 0.2s ease, color 0.12s ease;
+	transition: opacity 0.2s ease;
 }
 
-.tv-exit svg {
+.tv-exit img {
 	display: block;
-	width: 32px;
-	height: 32px;
+	width: 40px;
+	height: 40px;
+	transition: transform 0.12s ease, filter 0.12s ease;
 }
 
 .tv-exit:hover,
 .tv-exit:focus-visible {
-	opacity: 0.55;
+	opacity: 0.78;
 }
 
-/* Pressed, and then held there while the store loads. The store's own orange
-   (#e54d29, the one the orange skin paints the site with), so the way out
-   answers in the colour of the place it goes. */
+/* Pressed, and then held there while the store loads. A photograph can't be
+   recoloured the way the old drawn arrow could, so the press reads as a
+   press the other way round: it sinks, and it takes on the store's own
+   orange (#e54d29) as a glow around it. */
+.tv-exit:active img,
+.tv-exit.is-leaving img {
+	transform: scale(0.9);
+	filter: drop-shadow(0 0 8px #e54d29) drop-shadow(0 0 3px #e54d29);
+}
+
 .tv-exit:active,
 .tv-exit.is-leaving {
-	color: #e54d29;
 	opacity: 1;
 }
 
 @media (max-width: 749px) {
 	.tv-exit {
-		padding: 13px 16px;
+		padding: 12px 14px;
 	}
 
-	.tv-exit svg {
-		width: 36px;
-		height: 36px;
+	.tv-exit img {
+		width: 46px;
+		height: 46px;
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.tv-exit {
+	.tv-exit,
+	.tv-exit img {
 		transition: none;
 	}
 }
