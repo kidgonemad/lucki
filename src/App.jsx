@@ -7,6 +7,7 @@ import studio from '@theatre/studio'
 import extension from '@theatre/r3f/dist/extension'
 import { editable as e, SheetProvider } from '@theatre/r3f'
 import Model from './Model'
+import RemoteHud from './RemoteHud'
 import useChannelStore from './store'
 import './App.css'
 
@@ -845,6 +846,10 @@ function App() {
           <WASDControls controlsRef={controlsRef} />
           <FpsTracker fpsRef={fpsRef} />
           <Stats className="fps-stats" />
+
+          {/* Screen-space remote along the bottom edge; waits for the reveal
+              so it slides in rather than being there from the first frame. */}
+          {loaded && <RemoteHud />}
         </SheetProvider>
       </Canvas>
 

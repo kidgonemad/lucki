@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import { RoundedBox } from '@react-three/drei'
+import { CanvasTexture, SRGBColorSpace, LinearFilter } from 'three'
 
 /**
  * Procedural CRT-era TV remote. No external model — everything here is built
@@ -47,21 +48,80 @@ function PillButton({ position, w = 0.2, l = 0.12, mat = RUBBER }) {
   )
 }
 
+// Printed labels are drawn into a canvas and laid over the shell face as a
+// decal. It reads world coordinates straight off the button constants below,
+// so labels and buttons can never drift apart — move a button, the label moves.
+const LABEL_PX_PER_UNIT = 600
+
+function worldToCanvas(x, z) {
+  return [
+    ((x + BODY.w / 2) / BODY.w) * BODY.w * LABEL_PX_PER_UNIT,
+    ((z + BODY.l / 2) / BODY.l) * BODY.l * LABEL_PX_PER_UNIT,
+  ]
+}
+
+function buildLabelTexture(keypad) {
+  const W = Math.round(BODY.w * LABEL_PX_PER_UNIT)
+  const H = Math.round(BODY.l * LABEL_PX_PER_UNIT)
+  const cv = document.createElement('canvas')
+  cv.width = W
+  cv.height = H
+  const c = cv.getContext('2d')
+
+  c.clearRect(0, 0, W, H)
+  c.textAlign = 'center'
+  c.textBaseline = 'middle'
+
+  const text = (str, x, z, size, color = 'rgba(224,224,224,0.85)', weight = '600') => {
+    const [px, py] = worldToCanvas(x, z)
+    c.fillStyle = color
+    c.font = `${weight} ${size}px "Helvetica Neue", Helvetica, Arial, sans-serif`
+    c.fillText(str, px, py)
+  }
+
+  // Keypad digits, printed just under each button.
+  keypad.forEach(({ x, z, label }) => text(label, x, z + 0.105, 30))
+
+  // Power / mute
+  text('POWER', -0.22, -0.79, 19, 'rgba(232,150,140,0.9)')
+  text('MUTE', 0.22, -0.79, 19)
+
+  // Rockers: channel on the left, volume on the right. No up/down glyphs —
+  // the decal sits below the button tops, so anything drawn under a button
+  // is occluded by it.
+  text('CH', -0.21, -0.335, 21)
+  text('VOL', 0.21, -0.335, 21)
+
+  // Branding down at the base.
+  text('LUCKI', 0, 1.0, 34, 'rgba(200,200,200,0.5)', '700')
+
+  const tex = new CanvasTexture(cv)
+  tex.colorSpace = SRGBColorSpace
+  tex.minFilter = LinearFilter
+  tex.magFilter = LinearFilter
+  tex.anisotropy = 4
+  return tex
+}
+
 export default function Remote(props) {
   // 3x4 keypad: 1-9 then blank/0/enter, laid out from the middle of the body.
   const keypad = useMemo(() => {
     const cols = [-0.21, 0, 0.21]
     const rows = [-0.12, 0.13, 0.38, 0.63]
+    const labels = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], [null, '0', 'ENT']]
     const keys = []
     rows.forEach((z, r) => {
       cols.forEach((x, c) => {
         // bottom row is blank / 0 / enter — skip the blank slot
-        if (r === 3 && c === 0) return
-        keys.push({ x, z, key: `${r}-${c}` })
+        if (labels[r][c] === null) return
+        keys.push({ x, z, key: `${r}-${c}`, label: labels[r][c] })
       })
     })
     return keys
   }, [])
+
+  const labelTexture = useMemo(() => buildLabelTexture(keypad), [keypad])
+  useEffect(() => () => labelTexture.dispose(), [labelTexture])
 
   return (
     <group {...props}>
@@ -75,6 +135,12 @@ export default function Remote(props) {
       >
         <meshStandardMaterial {...SHELL} />
       </RoundedBox>
+
+      {/* Printed labels, laid on the face just under the button tops */}
+      <mesh position={[0, FACE_Y + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[BODY.w, BODY.l]} />
+        <meshBasicMaterial map={labelTexture} transparent depthWrite={false} />
+      </mesh>
 
       {/* IR emitter window at the tip */}
       <mesh position={[0, FACE_Y - 0.04, -BODY.l / 2 + 0.02]} rotation={[Math.PI / 2, 0, 0]}>
