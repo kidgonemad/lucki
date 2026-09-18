@@ -61,21 +61,36 @@ function isMobile() {
 //   curl   the backing circle, clipped to x <= t (the lifted part), then
 //          folded back over the fold line so it lies on top of the face
 //
-// The fold maps x to t + CURL*(t - x): a reflection about x = t, squashed
-// along x. Squashed because the lifted part doesn't lie flat against the
-// sticker, it rolls — and a roll seen from the front is foreshortened. At
-// CURL = 1 this is a hard crease, which is what a folded paper circle does,
-// not what a sticker peeling does.
+// The fold maps x to t + s*(t - x): a reflection about x = t, squashed along
+// x. Squashed because the lifted part doesn't lie flat against the sticker,
+// it rolls — and a roll seen from the front is foreshortened. At s = 1 this
+// is a hard crease, which is what a folded paper circle does, not what a
+// peeling sticker does.
+//
+// s is not constant. A roll only takes up so much room however much you feed
+// it: past a turn or two the paper is going round the outside of what is
+// already there, and the roll stops widening. So the curl's width eases onto
+// PEEL_ROLL rather than growing with the peel — it leaves at PEEL_CURL per
+// unit lifted and flattens out from there. Left linear it reached two thirds
+// of the sticker's width again by the end, ran off the side of the box, and
+// got squared off by it.
 //
 // A circle has no corners, but a crease across one has two, where the folded
-// edge meets the arc. PEEL_ROUND takes those off: blur the shape, then push
+// edge meets the arc. The filter takes those off: blur the shape, then push
 // the alpha back to hard through a colour matrix. Straight edges survive that
 // untouched; corners come back rounded.
 const PEEL_ANGLE = -35
 const PEEL_CURL = 0.52
+const PEEL_ROLL = 34
 const PEEL_REST = -10
 const PEEL_SPAN = 168
 const PEEL_MS = 700
+
+// The art sits at 0..160; the box is bigger so the curl and its shadow have
+// somewhere to be. Without the margin the SVG's own viewport cuts them into
+// straight edges, and a round sticker peels like a square one.
+const PEEL_PAD = 40
+const PEEL_BOX = 160 + PEEL_PAD * 2
 
 // The store is asked for a shade before the fold finishes, so the page turns
 // over on the last of it rather than after a beat of nothing.
@@ -83,6 +98,16 @@ const PEEL_NAV_MS = 600
 
 // How far the clip rects run past the art, so their far edges never cut it.
 const CLIP_BACK = 600
+
+// Where the lifted part ends up once it's rolled. The peeled run is t - 0.5
+// (the circle's near edge sits at x = 0.5); the roll that run makes is that
+// much squashed, easing onto PEEL_ROLL.
+function curlAt(t) {
+  const lifted = Math.max(t - 0.5, 0.0001)
+  const width = PEEL_ROLL * (1 - Math.exp((-PEEL_CURL * lifted) / PEEL_ROLL))
+  const squash = width / lifted
+  return `translate(${t * (1 + squash)} 0) scale(${-squash} 1)`
+}
 
 // Where the exit button goes.
 //
@@ -863,10 +888,7 @@ function App() {
       const t = PEEL_REST + eased * (PEEL_SPAN - PEEL_REST)
       fold.setAttribute('x', t)
       lifted.setAttribute('width', CLIP_BACK + t)
-      flap.setAttribute(
-        'transform',
-        `translate(${t * (1 + PEEL_CURL)} 0) scale(${-PEEL_CURL} 1)`,
-      )
+      flap.setAttribute('transform', curlAt(t))
       if (p < 1) requestAnimationFrame(frame)
     }
     requestAnimationFrame(frame)
@@ -919,7 +941,11 @@ function App() {
         {/* The face, cut to a circle with a transparent surround so none of
             the original's black background shows against the white scene.
             See PEEL_ANGLE above for how the two halves work. */}
-        <svg viewBox="0 0 160 160" aria-hidden="true" focusable="false">
+        <svg
+          viewBox={`${-PEEL_PAD} ${-PEEL_PAD} ${PEEL_BOX} ${PEEL_BOX}`}
+          aria-hidden="true"
+          focusable="false"
+        >
           <defs>
             {/* Ahead of the fold: still stuck. */}
             <clipPath id="tv-exit-stuck">
@@ -983,7 +1009,7 @@ function App() {
             <g className="tv-exit-flap" filter="url(#tv-exit-curl)">
               <g
                 ref={flapRef}
-                transform={`translate(${PEEL_REST * (1 + PEEL_CURL)} 0) scale(${-PEEL_CURL} 1)`}
+                transform={curlAt(PEEL_REST)}
               >
                 <g clipPath="url(#tv-exit-lifted)">
                   <circle cx="80" cy="80" r="79.5" fill="url(#tv-exit-backing)" />
