@@ -1,6 +1,7 @@
-import { useMemo, useEffect } from 'react'
+import { useMemo, useEffect, useState, useCallback } from 'react'
 import { RoundedBox } from '@react-three/drei'
 import { CanvasTexture, SRGBColorSpace, LinearFilter } from 'three'
+import useChannelStore from './store'
 
 /**
  * Procedural CRT-era TV remote. No external model — everything here is built
@@ -25,23 +26,60 @@ const EMITTER = { color: '#3a2a12', roughness: 0.35, metalness: 0.1 }
 const FACE_Y = BODY.h / 2
 const BTN_H = 0.045
 
-function RoundButton({ position, r = 0.075, mat = RUBBER }) {
+const PRESS_DEPTH = 0.022
+const PRESS_MS = 130
+
+// Shared press behaviour: sink the button, fire the action, pop back.
+function usePress(onPress) {
+  const [pressed, setPressed] = useState(false)
+
+  const down = useCallback(
+    (e) => {
+      // Keep the tap off the camera controls underneath.
+      e.stopPropagation()
+      if (!onPress) return
+      setPressed(true)
+      onPress()
+      setTimeout(() => setPressed(false), PRESS_MS)
+    },
+    [onPress],
+  )
+
+  return [pressed ? PRESS_DEPTH : 0, down, !!onPress]
+}
+
+function RoundButton({ position, r = 0.075, mat = RUBBER, onPress }) {
+  const [sink, down, live] = usePress(onPress)
+  const [x, y, z] = position
+
   return (
-    <mesh position={position} castShadow>
+    <mesh
+      position={[x, y - sink, z]}
+      castShadow
+      onPointerDown={down}
+      onPointerOver={live ? () => (document.body.style.cursor = 'pointer') : undefined}
+      onPointerOut={live ? () => (document.body.style.cursor = 'auto') : undefined}
+    >
       <cylinderGeometry args={[r, r * 0.92, BTN_H, 20]} />
       <meshStandardMaterial {...mat} />
     </mesh>
   )
 }
 
-function PillButton({ position, w = 0.2, l = 0.12, mat = RUBBER }) {
+function PillButton({ position, w = 0.2, l = 0.12, mat = RUBBER, onPress }) {
+  const [sink, down, live] = usePress(onPress)
+  const [x, y, z] = position
+
   return (
     <RoundedBox
       args={[w, BTN_H, l]}
       radius={BTN_H * 0.45}
       smoothness={3}
-      position={position}
+      position={[x, y - sink, z]}
       castShadow
+      onPointerDown={down}
+      onPointerOver={live ? () => (document.body.style.cursor = 'pointer') : undefined}
+      onPointerOut={live ? () => (document.body.style.cursor = 'auto') : undefined}
     >
       <meshStandardMaterial {...mat} />
     </RoundedBox>
@@ -120,6 +158,34 @@ export default function Remote(props) {
   const labelTexture = useMemo(() => buildLabelTexture(keypad), [keypad])
   useEffect(() => () => labelTexture.dispose(), [labelTexture])
 
+  // Every button drives the same store the keyboard shortcuts drive, so the
+  // remote, the keys and (later) a phone all stay in sync for free.
+  const togglePower = useChannelStore((s) => s.togglePower)
+  const nextChannel = useChannelStore((s) => s.nextChannel)
+  const prevChannel = useChannelStore((s) => s.prevChannel)
+  const volumeUp = useChannelStore((s) => s.volumeUp)
+  const volumeDown = useChannelStore((s) => s.volumeDown)
+  const toggleMute = useChannelStore((s) => s.toggleMute)
+  const enterChannelNumber = useChannelStore((s) => s.enterChannelNumber)
+
+  // Channel/volume only mean anything once the set is on.
+  const whenOn = useCallback(
+    (fn) => () => {
+      if (useChannelStore.getState().phase === 'off') return
+      fn()
+    },
+    [],
+  )
+
+  const pressDigit = useCallback(
+    (label) => () => {
+      if (useChannelStore.getState().phase === 'off') return
+      if (label === 'ENT') return
+      enterChannelNumber(Number(label))
+    },
+    [enterChannelNumber],
+  )
+
   return (
     <group {...props}>
       {/* Shell */}
@@ -146,21 +212,26 @@ export default function Remote(props) {
       </mesh>
 
       {/* Power, top-left; the one red button on the whole thing */}
-      <RoundButton position={[-0.22, FACE_Y, -0.92]} r={0.082} mat={POWER} />
+      <RoundButton position={[-0.22, FACE_Y, -0.92]} r={0.082} mat={POWER} onPress={togglePower} />
 
       {/* Mute, top-right */}
-      <RoundButton position={[0.22, FACE_Y, -0.92]} r={0.072} mat={RUBBER_LIGHT} />
+      <RoundButton
+        position={[0.22, FACE_Y, -0.92]}
+        r={0.072}
+        mat={RUBBER_LIGHT}
+        onPress={whenOn(toggleMute)}
+      />
 
       {/* Channel rocker (left) and volume rocker (right) — two pills each,
           split by a thin gap so they read as a single rocker switch. */}
-      <PillButton position={[-0.21, FACE_Y, -0.62]} w={0.26} l={0.13} mat={RUBBER_LIGHT} />
-      <PillButton position={[-0.21, FACE_Y, -0.46]} w={0.26} l={0.13} mat={RUBBER_LIGHT} />
-      <PillButton position={[0.21, FACE_Y, -0.62]} w={0.26} l={0.13} mat={RUBBER_LIGHT} />
-      <PillButton position={[0.21, FACE_Y, -0.46]} w={0.26} l={0.13} mat={RUBBER_LIGHT} />
+      <PillButton position={[-0.21, FACE_Y, -0.62]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(nextChannel)} />
+      <PillButton position={[-0.21, FACE_Y, -0.46]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(prevChannel)} />
+      <PillButton position={[0.21, FACE_Y, -0.62]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(volumeUp)} />
+      <PillButton position={[0.21, FACE_Y, -0.46]} w={0.26} l={0.13} mat={RUBBER_LIGHT} onPress={whenOn(volumeDown)} />
 
       {/* Number pad */}
-      {keypad.map(({ x, z, key }) => (
-        <RoundButton key={key} position={[x, FACE_Y, z]} r={0.068} />
+      {keypad.map(({ x, z, key, label }) => (
+        <RoundButton key={key} position={[x, FACE_Y, z]} r={0.068} onPress={pressDigit(label)} />
       ))}
 
       {/* Battery door seam on the underside */}
