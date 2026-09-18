@@ -78,7 +78,7 @@ function drawMute(c, S, color) {
   c.stroke()
 }
 
-function glyphTexture(ch, color = 'rgba(16,16,16,0.9)') {
+function glyphTexture(ch, color = 'rgba(255,255,255,0.95)') {
   const key = `${ch}|${color}`
   if (glyphCache.has(key)) return glyphCache.get(key)
   const S = 128
@@ -205,7 +205,7 @@ function worldToCanvas(x, z) {
   ]
 }
 
-function buildLabelTexture(keypad) {
+function buildLabelTexture() {
   const W = Math.round(BODY.w * LABEL_PX_PER_UNIT)
   const H = Math.round(BODY.l * LABEL_PX_PER_UNIT)
   const cv = document.createElement('canvas')
@@ -217,18 +217,15 @@ function buildLabelTexture(keypad) {
   c.textAlign = 'center'
   c.textBaseline = 'middle'
 
-  const text = (str, x, z, size, color = 'rgba(224,224,224,0.85)', weight = '600') => {
+  const text = (str, x, z, size, color = 'rgba(255,255,255,0.95)', weight = '600') => {
     const [px, py] = worldToCanvas(x, z)
     c.fillStyle = color
     c.font = `${weight} ${size}px "Helvetica Neue", Helvetica, Arial, sans-serif`
     c.fillText(str, px, py)
   }
 
-  // Keypad digits, printed just under each button.
-  keypad.forEach(({ x, z, label }) => text(label, x, z + 0.105, 30))
-
   // Power / mute
-  text('POWER', -0.22, -0.79, 19, 'rgba(232,150,140,0.9)')
+  text('POWER', -0.22, -0.79, 19)
   text('MUTE', 0.22, -0.79, 19)
 
   // Rockers: channel on the left, volume on the right. No up/down glyphs —
@@ -262,7 +259,7 @@ export default function Remote(props) {
     return keys
   }, [])
 
-  const labelTexture = useMemo(() => buildLabelTexture(keypad), [keypad])
+  const labelTexture = useMemo(() => buildLabelTexture(), [])
   useEffect(() => () => labelTexture.dispose(), [labelTexture])
 
   // Every button drives the same store the keyboard shortcuts drive, so the
@@ -335,7 +332,6 @@ export default function Remote(props) {
         mat={RUBBER_LIGHT}
         onPress={whenOn(toggleMute)}
         glyph="mute"
-        glyphColor="rgba(18,18,18,0.92)"
       />
 
       {/* Channel rocker (left) and volume rocker (right) — two pills each,
@@ -347,7 +343,14 @@ export default function Remote(props) {
 
       {/* Number pad */}
       {keypad.map(({ x, z, key, label }) => (
-        <RoundButton key={key} position={[x, FACE_Y, z]} r={0.068} onPress={pressDigit(label)} />
+        <RoundButton
+          key={key}
+          position={[x, FACE_Y, z]}
+          r={0.068}
+          onPress={pressDigit(label)}
+          glyph={label}
+          glyphSize={0.105}
+        />
       ))}
 
       {/* Battery door seam on the underside */}
