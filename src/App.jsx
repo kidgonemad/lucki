@@ -823,8 +823,7 @@ function App() {
   return (
     <div id="canvas-container" onClick={handleBackgroundClick}>
       <button type="button" className="tv-exit" onClick={handleExit} aria-label="Back to the store">
-        <span className="tv-exit-arrow" aria-hidden="true">&larr;</span>
-        Store
+        &larr;
       </button>
 
       <Canvas

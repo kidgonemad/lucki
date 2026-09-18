@@ -613,48 +613,36 @@
 }
 
 /* Way back to the store, top right.
-   Matches the pill on the store's own TV page, but lives in the viewer so it
-   is there however the viewer was reached — inside the iframe or on its own.
-   Below the loading overlay (z 100) so it arrives with the scene. */
+   An arrow and nothing else — no plate, no fill, no border. The scene behind
+   it is white, so the arrow is black. Padding is the only thing that isn't
+   visible: a bare glyph is not a thumb-sized target, and this is. It sits
+   below the loading overlay (z 100) so it arrives with the scene. */
 .tv-exit {
 	position: fixed;
-	top: calc(env(safe-area-inset-top, 0px) + 14px);
-	right: calc(env(safe-area-inset-right, 0px) + 16px);
+	top: calc(env(safe-area-inset-top, 0px) + 6px);
+	right: calc(env(safe-area-inset-right, 0px) + 8px);
 	z-index: 20;
-	display: inline-flex;
-	align-items: center;
-	gap: 7px;
-	padding: 9px 13px;
+	padding: 10px 14px;
 	border: none;
-	border-radius: 999px;
-	font: 600 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
-	letter-spacing: 0.14em;
-	text-transform: uppercase;
-	color: rgba(255, 255, 255, 0.72);
-	background: rgba(0, 0, 0, 0.42);
-	-webkit-backdrop-filter: blur(6px);
-	backdrop-filter: blur(6px);
+	background: none;
+	-webkit-appearance: none;
+	appearance: none;
+	font: 400 26px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+	color: #000;
 	cursor: pointer;
 	-webkit-tap-highlight-color: transparent;
-	transition: color 0.25s ease, background-color 0.25s ease;
+	transition: opacity 0.2s ease;
 }
 
 .tv-exit:hover,
 .tv-exit:focus-visible {
-	color: #fff;
-	background: rgba(0, 0, 0, 0.62);
+	opacity: 0.55;
 }
 
-.tv-exit-arrow {
-	font-size: 13px;
-	line-height: 1;
-}
-
-/* Thumb-sized on a phone without making the pill any louder. */
 @media (max-width: 749px) {
 	.tv-exit {
 		padding: 12px 16px;
-		font-size: 12px;
+		font-size: 28px;
 	}
 }
 
