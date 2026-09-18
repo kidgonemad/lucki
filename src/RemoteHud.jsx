@@ -57,6 +57,11 @@ function RemoteRig() {
 export default function RemoteHud() {
   const { size } = useThree()
 
+  // Mobile only — portrait aspect, matching isMobile() in App.jsx. Derived
+  // straight from the live canvas size, so rotating a phone or resizing a
+  // window re-evaluates it with no state to keep in sync.
+  if (size.width / size.height >= 1) return null
+
   return (
     <Hud renderPriority={2}>
       <OrthographicCamera

@@ -92,9 +92,6 @@ function buildLabelTexture(keypad) {
   text('CH', -0.21, -0.335, 21)
   text('VOL', 0.21, -0.335, 21)
 
-  // Branding down at the base.
-  text('LUCKI', 0, 1.0, 34, 'rgba(200,200,200,0.5)', '700')
-
   const tex = new CanvasTexture(cv)
   tex.colorSpace = SRGBColorSpace
   tex.minFilter = LinearFilter
