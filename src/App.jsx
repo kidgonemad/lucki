@@ -8,6 +8,7 @@ import extension from '@theatre/r3f/dist/extension'
 import { editable as e, SheetProvider } from '@theatre/r3f'
 import Model from './Model'
 import RemoteHud from './RemoteHud'
+import { playClick, unlockAudio } from './sound'
 import useChannelStore from './store'
 import './App.css'
 
@@ -576,14 +577,6 @@ function LogoAnimation() {
   )
 }
 
-// Click sound for channel/volume actions
-const clickSound = typeof Audio !== 'undefined' ? new Audio(`${import.meta.env.BASE_URL}tv-ui-assets/sounds/remote-click.mp3`) : null
-function playClick() {
-  if (!clickSound) return
-  clickSound.currentTime = 0
-  clickSound.play().catch(() => {})
-}
-
 function App() {
   const controlsRef = useRef()
   const [panelVisible, setPanelVisible] = useState(false)
@@ -745,6 +738,7 @@ function App() {
         const ctx = new (window.AudioContext || window.webkitAudioContext)()
         if (ctx.state === 'suspended') ctx.resume()
       } catch (_) {}
+      unlockAudio()
       document.removeEventListener('click', handleNativeClick)
     }
 

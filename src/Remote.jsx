@@ -2,6 +2,7 @@ import { useMemo, useEffect, useState, useCallback } from 'react'
 import { RoundedBox } from '@react-three/drei'
 import { CanvasTexture, SRGBColorSpace, LinearFilter } from 'three'
 import useChannelStore from './store'
+import { playClick } from './sound'
 
 /**
  * Procedural CRT-era TV remote. No external model — everything here is built
@@ -122,6 +123,7 @@ function usePress(onPress) {
       e.stopPropagation()
       if (!onPress) return
       setPressed(true)
+      playClick()
       onPress()
       setTimeout(() => setPressed(false), PRESS_MS)
     },
