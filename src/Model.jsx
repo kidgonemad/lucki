@@ -5,6 +5,7 @@ import { VideoTexture, SRGBColorSpace, LinearFilter, Color, AnimationMixer, Loop
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import TvScreenMaterial from './TvScreenMaterial'
 import useChannelStore from './store'
+import { startStatic, stopStatic } from './sound'
 import TVUI from './TVUI'
 
 // Set up Draco decoder for compressed GLB
@@ -313,10 +314,19 @@ export default function Model({ controlsRef, onGoTo, onReady, onAnimationEnd, ..
 
       if (s.currentChannel !== prev.currentChannel) {
         const url = s.channels[s.currentChannel]
+
+        // The hiss the screen's static burst has always been missing. It
+        // follows the picture: up while the set is between channels, down as
+        // soon as the new one plays. Muted means muted, and it rides the
+        // volume like everything else coming out of the set.
+        const hiss = s.isMuted ? null : startStatic(0.16 * s.volume)
+
         if (!url) {
           crtMat.noSignal = 1.0
           useChannelStore.setState({ noSignal: true })
           video.pause()
+          // Nothing to tune into, so nothing will stop it — the guard inside
+          // startStatic does, and the dead channel hisses until it does.
           return
         }
         crtMat.noSignal = 1.0
@@ -328,11 +338,13 @@ export default function Model({ controlsRef, onGoTo, onReady, onAnimationEnd, ..
           if (!mounted) return
           crtMat.noSignal = 0.0
           crtMat.staticAmount = 0.04
+          stopStatic(hiss)
         }).catch(() => {
           if (!mounted) return
           crtMat.noSignal = 1.0
           crtMat.staticAmount = 0.04
           useChannelStore.setState({ noSignal: true })
+          stopStatic(hiss)
         })
       }
     })

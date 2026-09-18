@@ -8,7 +8,7 @@ import extension from '@theatre/r3f/dist/extension'
 import { editable as e, SheetProvider } from '@theatre/r3f'
 import Model from './Model'
 import RemoteHud from './RemoteHud'
-import { playClick, unlockAudio } from './sound'
+import { playClick, unlockAudio, audioContext } from './sound'
 import useChannelStore from './store'
 import './App.css'
 
@@ -815,10 +815,14 @@ function App() {
     if (!isMobile()) return
 
     const handleNativeClick = () => {
+      // Resume the context the static hiss plays through. This used to build
+      // a throwaway one and drop it, which unlocked nothing.
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)()
-        if (ctx.state === 'suspended') ctx.resume()
-      } catch (_) {}
+        const ctx = audioContext()
+        if (ctx && ctx.state === 'suspended') ctx.resume()
+      } catch {
+        /* no audio on this device */
+      }
       unlockAudio()
       document.removeEventListener('click', handleNativeClick)
     }
