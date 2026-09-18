@@ -633,7 +633,7 @@
 	color: #000;
 	cursor: pointer;
 	-webkit-tap-highlight-color: transparent;
-	transition: opacity 0.2s ease;
+	transition: opacity 0.2s ease, color 0.12s ease;
 }
 
 .tv-exit svg {
@@ -645,6 +645,15 @@
 .tv-exit:hover,
 .tv-exit:focus-visible {
 	opacity: 0.55;
+}
+
+/* Pressed, and then held there while the store loads. The store's own orange
+   (#e54d29, the one the orange skin paints the site with), so the way out
+   answers in the colour of the place it goes. */
+.tv-exit:active,
+.tv-exit.is-leaving {
+	color: #e54d29;
+	opacity: 1;
 }
 
 @media (max-width: 749px) {

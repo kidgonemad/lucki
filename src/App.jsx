@@ -798,8 +798,15 @@ function App() {
 
   // Sits over the canvas, so its click would otherwise bubble to
   // handleBackgroundClick and yank the camera on the way out.
+  //
+  // The press latches orange rather than only flashing on :active. Leaving is
+  // a navigation: the page stays put for as long as the store takes to
+  // answer, and without the latch the mark would snap back to black and read
+  // as a tap that did nothing.
+  const [leaving, setLeaving] = useState(false)
   const handleExit = useCallback((ev) => {
     ev.stopPropagation()
+    setLeaving(true)
     leaveForStore()
   }, [])
 
@@ -822,7 +829,12 @@ function App() {
 
   return (
     <div id="canvas-container" onClick={handleBackgroundClick}>
-      <button type="button" className="tv-exit" onClick={handleExit} aria-label="Back to the store">
+      <button
+        type="button"
+        className={`tv-exit${leaving ? ' is-leaving' : ''}`}
+        onClick={handleExit}
+        aria-label="Back to the store"
+      >
         {/* A solid disc with the arrow knocked out of it. Drawn rather than
             typed: the &larr; glyph is a hairline whose weight is whatever the
             system font decides, and a filled mark holds up against whatever
