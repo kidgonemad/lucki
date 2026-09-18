@@ -638,7 +638,7 @@
 	display: block;
 	width: 40px;
 	height: 40px;
-	transition: transform 0.12s ease, filter 0.12s ease;
+	transition: transform 0.12s ease;
 }
 
 .tv-exit:hover,
@@ -646,14 +646,11 @@
 	opacity: 0.78;
 }
 
-/* Pressed, and then held there while the store loads. A photograph can't be
-   recoloured the way the old drawn arrow could, so the press reads as a
-   press the other way round: it sinks, and it takes on the store's own
-   orange (#e54d29) as a glow around it. */
+/* Pressed, and then held there while the store loads. Just the sink — no
+   colour laid over the face. */
 .tv-exit:active svg,
 .tv-exit.is-leaving svg {
 	transform: scale(0.9);
-	filter: drop-shadow(0 0 8px #e54d29) drop-shadow(0 0 3px #e54d29);
 }
 
 .tv-exit:active,
