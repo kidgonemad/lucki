@@ -50,33 +50,39 @@ function isMobile() {
 // The peel.
 //
 // A sticker doesn't tip off a surface in one piece — a fold line travels
-// across it, the part behind the line curls back on itself showing its paper
-// backing, and the part ahead of it is still stuck down flat. That's what this
-// draws, as real geometry rather than a tilt.
+// across it, the part behind the line curls back over the part still stuck
+// down, and what's ahead of the line stays flat. That's what this draws, as
+// real geometry rather than a tilt.
 //
-// Everything happens in a frame rotated by PEEL_ANGLE, so the fold line is
-// just a vertical line at x = t sweeping from 0 to 160 and the maths stays
-// simple. Both halves are cut by the same edge, x >= t:
+// Everything happens in a frame rotated by PEEL_ANGLE, so the fold is a plain
+// vertical line at x = t sweeping across, and the maths stays simple:
 //
 //   stuck  the face, clipped to x >= t — what hasn't lifted yet
-//   flap   the backing, reflected about x = t, then clipped to x >= t in
-//          that reflected space. Reflection maps the half-plane x < t onto
-//          x > t, so the same clip picks out exactly the peeled part folded
-//          back over the sticker. The circle spans x 0.5..159.5 whatever the
-//          angle, since it's rotated about its own centre, so one sweep of t
-//          from 0 to 160 lifts all of it.
-// At rest the fold starts a little off the near edge rather than exactly on
-// it, so the first frame of the peel already has the fold biting. The flap is
-// hidden outright until the peel runs — parked off the edge its shadow still
-// blurs back across it, and no offset is far enough to be sure of.
+//   curl   the backing circle, clipped to x <= t (the lifted part), then
+//          folded back over the fold line so it lies on top of the face
+//
+// The fold maps x to t + CURL*(t - x): a reflection about x = t, squashed
+// along x. Squashed because the lifted part doesn't lie flat against the
+// sticker, it rolls — and a roll seen from the front is foreshortened. At
+// CURL = 1 this is a hard crease, which is what a folded paper circle does,
+// not what a sticker peeling does.
+//
+// A circle has no corners, but a crease across one has two, where the folded
+// edge meets the arc. PEEL_ROUND takes those off: blur the shape, then push
+// the alpha back to hard through a colour matrix. Straight edges survive that
+// untouched; corners come back rounded.
 const PEEL_ANGLE = -35
+const PEEL_CURL = 0.52
 const PEEL_REST = -10
-const PEEL_SPAN = 160
+const PEEL_SPAN = 168
 const PEEL_MS = 700
 
 // The store is asked for a shade before the fold finishes, so the page turns
 // over on the last of it rather than after a beat of nothing.
 const PEEL_NAV_MS = 600
+
+// How far the clip rects run past the art, so their far edges never cut it.
+const CLIP_BACK = 600
 
 // Where the exit button goes.
 //
@@ -836,16 +842,18 @@ function App() {
   // while it is still coming away rather than after it has gone.
   const [leaving, setLeaving] = useState(false)
   const leavingRef = useRef(false)
-  const foldRef = useRef(null) // the clip edge both halves are cut by
-  const flapRef = useRef(null) // the folded-back backing
+  const foldRef = useRef(null) // clips the face to what is still stuck
+  const liftedRef = useRef(null) // clips the backing to what has lifted
+  const flapRef = useRef(null) // folds that lifted part back over the face
 
   // Driven by hand rather than by CSS: the fold edge and the reflection have
   // to move in step, and one of them is an attribute CSS can't animate.
   // Writing both straight to the DOM also keeps it off React's render path.
   const runPeel = useCallback(() => {
     const fold = foldRef.current
+    const lifted = liftedRef.current
     const flap = flapRef.current
-    if (!fold || !flap) return
+    if (!fold || !lifted || !flap) return
     const t0 = performance.now()
 
     const frame = (now) => {
@@ -854,7 +862,11 @@ function App() {
       const eased = p < 0.5 ? 2 * p * p : 1 - (-2 * p + 2) ** 2 / 2
       const t = PEEL_REST + eased * (PEEL_SPAN - PEEL_REST)
       fold.setAttribute('x', t)
-      flap.setAttribute('transform', `translate(${2 * t} 0) scale(-1 1)`)
+      lifted.setAttribute('width', CLIP_BACK + t)
+      flap.setAttribute(
+        'transform',
+        `translate(${t * (1 + PEEL_CURL)} 0) scale(${-PEEL_CURL} 1)`,
+      )
       if (p < 1) requestAnimationFrame(frame)
     }
     requestAnimationFrame(frame)
@@ -909,29 +921,53 @@ function App() {
             See PEEL_ANGLE above for how the two halves work. */}
         <svg viewBox="0 0 160 160" aria-hidden="true" focusable="false">
           <defs>
-            {/* The fold edge. x rides from 0 to 160 as it peels. */}
-            <clipPath id="tv-exit-fold">
-              <rect ref={foldRef} x={PEEL_REST} y="-140" width="600" height="440" />
+            {/* Ahead of the fold: still stuck. */}
+            <clipPath id="tv-exit-stuck">
+              <rect ref={foldRef} x={PEEL_REST} y="-200" width={CLIP_BACK} height="560" />
             </clipPath>
 
-            {/* Sticker paper, lit along the curl: brightest just past the
-                fold where it turns over, falling away toward the loose edge. */}
+            {/* Behind the fold: lifted. */}
+            <clipPath id="tv-exit-lifted">
+              <rect
+                ref={liftedRef}
+                x={-CLIP_BACK}
+                y="-200"
+                width={CLIP_BACK + PEEL_REST}
+                height="560"
+              />
+            </clipPath>
+
+            {/* Sticker paper, lit along the roll: brightest where it turns
+                over at the fold, falling away toward the loose edge. */}
             <linearGradient id="tv-exit-backing" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#b9b3a8" />
-              <stop offset="34%" stopColor="#f6f4ef" />
-              <stop offset="72%" stopColor="#ded9d0" />
-              <stop offset="100%" stopColor="#b4aea3" />
+              <stop offset="0%" stopColor="#aaa49a" />
+              <stop offset="26%" stopColor="#e6e2da" />
+              <stop offset="62%" stopColor="#f7f5f1" />
+              <stop offset="100%" stopColor="#cfc9bf" />
             </linearGradient>
 
-            {/* Cast by the lifted part onto what's still stuck down. */}
-            <filter id="tv-exit-lift" x="-60%" y="-60%" width="220%" height="220%">
-              <feDropShadow dx="2.5" dy="4" stdDeviation="3" floodOpacity="0.38" />
+            {/* Rounds the two corners the crease leaves on a circle, and
+                drops the curl's shadow onto what's still stuck. Blur, then
+                drive the alpha back to hard: straight edges come through
+                unchanged, corners come back round. */}
+            <filter id="tv-exit-curl" x="-70%" y="-70%" width="260%" height="260%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="soft" />
+              <feColorMatrix
+                in="soft"
+                type="matrix"
+                values="1 0 0 0 0
+                        0 1 0 0 0
+                        0 0 1 0 0
+                        0 0 0 20 -9"
+                result="firm"
+              />
+              <feDropShadow in="firm" dx="2" dy="3" stdDeviation="2.6" floodOpacity="0.36" />
             </filter>
           </defs>
 
           <g transform={`rotate(${PEEL_ANGLE} 80 80)`}>
             {/* Still stuck down. */}
-            <g clipPath="url(#tv-exit-fold)">
+            <g clipPath="url(#tv-exit-stuck)">
               <g transform={`rotate(${-PEEL_ANGLE} 80 80)`}>
                 <image
                   href={`${import.meta.env.BASE_URL}tv-ui-assets/img/back-face.webp`}
@@ -943,10 +979,13 @@ function App() {
               </g>
             </g>
 
-            {/* Lifted, folded back on itself, backing side up. */}
-            <g className="tv-exit-flap" filter="url(#tv-exit-lift)">
-              <g ref={flapRef} transform={`translate(${2 * PEEL_REST} 0) scale(-1 1)`}>
-                <g clipPath="url(#tv-exit-fold)">
+            {/* Lifted, rolled back over the face, backing side up. */}
+            <g className="tv-exit-flap" filter="url(#tv-exit-curl)">
+              <g
+                ref={flapRef}
+                transform={`translate(${PEEL_REST * (1 + PEEL_CURL)} 0) scale(${-PEEL_CURL} 1)`}
+              >
+                <g clipPath="url(#tv-exit-lifted)">
                   <circle cx="80" cy="80" r="79.5" fill="url(#tv-exit-backing)" />
                 </g>
               </g>
