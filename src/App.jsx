@@ -47,6 +47,60 @@ function isMobile() {
   return window.innerWidth / window.innerHeight < 1
 }
 
+// Where the exit button goes.
+//
+// The viewer is a static site on its own domain, embedded in an iframe on the
+// store's /pages/tv, so it can't know the shop's URL at build time. It reads
+// it off the referrer instead: Shopify's default referrer policy trims a
+// cross-origin referrer to the bare origin, which is the shop's front page —
+// exactly what's wanted. ?home=<url> overrides that when the referrer is
+// stripped or the viewer is opened on its own.
+function storeHomeUrl() {
+  const override = new URLSearchParams(window.location.search).get('home')
+  if (override) {
+    try {
+      return new URL(override, window.location.href).href
+    } catch {
+      /* malformed — fall through to the referrer */
+    }
+  }
+  if (document.referrer) {
+    try {
+      const ref = new URL(document.referrer)
+      if (ref.origin !== window.location.origin) return ref.origin + '/'
+    } catch {
+      /* fall through */
+    }
+  }
+  return null
+}
+
+// Leaving is a top-level navigation out of the iframe, not a navigation of
+// the iframe itself — otherwise the store loads inside the TV page.
+function leaveForStore() {
+  const url = storeHomeUrl()
+  const embedded = window.top !== window.self
+
+  if (!url) {
+    // Nothing we can name. The back stack is the only honest answer left.
+    if (window.history.length > 1) window.history.back()
+    return
+  }
+
+  if (!embedded) {
+    window.location.href = url
+    return
+  }
+
+  // A cross-origin frame may drive the top frame on a real user gesture, which
+  // a click is. window.open('_top') covers the case where it can't.
+  try {
+    window.top.location.href = url
+  } catch {
+    window.open(url, '_top')
+  }
+}
+
 function Loader() {
   return (
     <mesh>
@@ -742,6 +796,13 @@ function App() {
     goToView('tv')
   }, [goToView])
 
+  // Sits over the canvas, so its click would otherwise bubble to
+  // handleBackgroundClick and yank the camera on the way out.
+  const handleExit = useCallback((ev) => {
+    ev.stopPropagation()
+    leaveForStore()
+  }, [])
+
   // Mobile: native DOM click for iOS audio unlock (no DeviceMotion needed)
   useEffect(() => {
     if (!isMobile()) return
@@ -761,6 +822,11 @@ function App() {
 
   return (
     <div id="canvas-container" onClick={handleBackgroundClick}>
+      <button type="button" className="tv-exit" onClick={handleExit} aria-label="Back to the store">
+        <span className="tv-exit-arrow" aria-hidden="true">&larr;</span>
+        Store
+      </button>
+
       <Canvas
         camera={{ position: [12.02, 3.64, -26.01], fov: 45 }}
         shadows={!isMobile()}

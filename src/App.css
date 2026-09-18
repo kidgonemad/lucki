@@ -611,3 +611,55 @@
 	pointer-events: none;
 	z-index: 10;
 }
+
+/* Way back to the store, top right.
+   Matches the pill on the store's own TV page, but lives in the viewer so it
+   is there however the viewer was reached — inside the iframe or on its own.
+   Below the loading overlay (z 100) so it arrives with the scene. */
+.tv-exit {
+	position: fixed;
+	top: calc(env(safe-area-inset-top, 0px) + 14px);
+	right: calc(env(safe-area-inset-right, 0px) + 16px);
+	z-index: 20;
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	padding: 9px 13px;
+	border: none;
+	border-radius: 999px;
+	font: 600 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: rgba(255, 255, 255, 0.72);
+	background: rgba(0, 0, 0, 0.42);
+	-webkit-backdrop-filter: blur(6px);
+	backdrop-filter: blur(6px);
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+	transition: color 0.25s ease, background-color 0.25s ease;
+}
+
+.tv-exit:hover,
+.tv-exit:focus-visible {
+	color: #fff;
+	background: rgba(0, 0, 0, 0.62);
+}
+
+.tv-exit-arrow {
+	font-size: 13px;
+	line-height: 1;
+}
+
+/* Thumb-sized on a phone without making the pill any louder. */
+@media (max-width: 749px) {
+	.tv-exit {
+		padding: 12px 16px;
+		font-size: 12px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.tv-exit {
+		transition: none;
+	}
+}
