@@ -4,50 +4,84 @@ import { useThree, useFrame } from '@react-three/fiber'
 import Remote from './Remote'
 
 /**
- * The remote as a screen-space overlay, lying horizontally along the bottom
- * edge. It renders inside the main Canvas via <Hud>, so there's no second
- * WebGL context — just a second camera pass over the same renderer.
+ * The remote as a screen-space overlay, held upright as though an invisible
+ * hand were holding it out: it drifts, sways and breathes rather than sitting
+ * locked to the edge.
  *
- * The ortho camera is set up so 1 world unit == 1 CSS pixel, which makes the
- * layout numbers below read as plain pixel values.
+ * It renders inside the main Canvas via <Hud>, so there's no second WebGL
+ * context — just a second camera pass over the same renderer. The ortho camera
+ * is set up so 1 world unit == 1 CSS pixel, which makes the layout numbers
+ * below read as plain pixel values.
  */
 
 const REMOTE_PX = 300 // on-screen length of the remote, in px
-const MARGIN_PX = 26 // gap from the bottom edge at rest
-const SLIDE_PX = 260 // how far below the edge it starts
-const EASE = 2.6 // higher = snappier settle
+const MARGIN_X = 74 // from the right edge
+const MARGIN_Y = 40 // from the bottom edge
+const SLIDE_PX = 300 // how far below the edge it starts
+
+// A hand never holds anything perfectly square to you.
+const REST_TILT_X = 0.26
+const REST_TILT_Z = -0.11
+
+// Idle motion. Deliberately unrelated frequencies so the loop never reads as
+// a loop — a hand doesn't oscillate on a metronome.
+const DRIFT = {
+  y: { amp: 9, hz: 0.27 },
+  x: { amp: 5, hz: 0.19 },
+  rotZ: { amp: 0.045, hz: 0.23 },
+  rotX: { amp: 0.035, hz: 0.31 },
+  rotY: { amp: 0.06, hz: 0.13 },
+}
 
 function RemoteRig() {
   const group = useRef()
+  const inner = useRef()
   const { size } = useThree()
   const [armed, setArmed] = useState(false)
+  const t = useRef(0)
 
-  // Small beat before it slides in, so it arrives after the scene settles
-  // rather than competing with the load.
+  // Small beat before it rises into frame, so it arrives after the scene
+  // settles rather than competing with the load.
   useEffect(() => {
-    const t = setTimeout(() => setArmed(true), 900)
-    return () => clearTimeout(t)
+    const id = setTimeout(() => setArmed(true), 900)
+    return () => clearTimeout(id)
   }, [])
 
   const scale = REMOTE_PX / 2.4 // remote is 2.4 units long in local space
-  const restY = -size.height / 2 + (0.86 * scale) / 2 + MARGIN_PX
+  const restX = size.width / 2 - (0.86 * scale) / 2 - MARGIN_X
+  const restY = -size.height / 2 + REMOTE_PX / 2 + MARGIN_Y
 
   useFrame((_, delta) => {
-    if (!group.current) return
-    const target = armed ? restY : restY - SLIDE_PX
-    // Frame-rate independent exponential ease toward the target.
-    const k = 1 - Math.exp(-EASE * delta)
-    group.current.position.y += (target - group.current.position.y) * k
+    if (!group.current || !inner.current) return
+    t.current += delta
+
+    // Rise into frame once, then hold.
+    const targetY = armed ? restY : restY - SLIDE_PX
+    const k = 1 - Math.exp(-2.6 * delta)
+    group.current.position.y += (targetY - group.current.position.y) * k
+    group.current.position.x += (restX - group.current.position.x) * k
+
+    // The held-in-hand drift, layered on top of wherever the rise has got to.
+    const time = t.current
+    const w = (d) => Math.sin(time * d.hz * Math.PI * 2)
+    inner.current.position.y = DRIFT.y.amp * w(DRIFT.y)
+    inner.current.position.x = DRIFT.x.amp * w(DRIFT.x)
+    inner.current.rotation.z = REST_TILT_Z + DRIFT.rotZ.amp * w(DRIFT.rotZ)
+    inner.current.rotation.x = REST_TILT_X + DRIFT.rotX.amp * w(DRIFT.rotX)
+    inner.current.rotation.y = DRIFT.rotY.amp * w(DRIFT.rotY)
   })
 
   return (
-    <group ref={group} position={[0, restY - SLIDE_PX, 0]} scale={scale}>
-      {/* Spin it flat on screen... */}
-      <group rotation={[0, 0, Math.PI / 2]}>
-        {/* ...and tip the face toward the camera. The face normal is +Y in
-            the remote's local space, so +90° about X swings it to +Z. */}
-        <group rotation={[Math.PI / 2, 0, 0]}>
-          <Remote />
+    <group ref={group} position={[restX, restY - SLIDE_PX, 0]}>
+      {/* Drift lives on its own node so it composes with the rise instead of
+          fighting it for the same transform. */}
+      <group ref={inner}>
+        <group scale={scale}>
+          {/* Upright, face toward the camera. The remote's face normal is +Y
+              in local space, so +90° about X swings it to +Z. */}
+          <group rotation={[Math.PI / 2, 0, 0]}>
+            <Remote />
+          </group>
         </group>
       </group>
     </group>
